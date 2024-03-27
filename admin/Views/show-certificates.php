@@ -71,18 +71,20 @@ if ($_SESSION['role']  !== 'admin') {
         while ($show_user = mysqli_fetch_assoc($users)) {
         $certificate_file = $show_user['certificate_file'];
         $temp_pdf_path = "../../assets/images/certificates/".basename($certificate_file);
+        $temp_pdf_path = "../../assets/images/certificates/$certificate_file";
 
+            // To Show file type ans size
             $imageFileType = strtolower(pathinfo($temp_pdf_path,PATHINFO_EXTENSION));
             file_put_contents($temp_pdf_path, $certificate_file);
             $filesize = filesize($temp_pdf_path);
-            echo '
-            <a class="app-card-link-mask" href="'.$temp_pdf_path.'"></a>
+        echo '
         <div class="col-6 col-md-4 col-xl-3 col-xxl-2">
             <div class="app-card app-card-doc shadow-sm h-100">
                 <div class="app-card-thumb-holder p-4">
                     <span class="icon-holder">
                         <i class="fas fa-file-pdf pdf-file"></i>
                     </span>
+                        <a class="app-card-link-mask" href="../../assets/images/certificates/'.$certificate_file.'"></a>
                 </div>
                 <div class="app-card-body p-3 has-card-actions">
                     
@@ -99,9 +101,9 @@ if ($_SESSION['role']  !== 'admin') {
             <div class="dropdown">
                 <div class="dropdown-toggle no-toggle-arrow" data-bs-toggle="dropdown" aria-expanded="false">
                     <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-three-dots-vertical" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-                    </svg>
-                </div>
+                            <path fill-rule="evenodd" d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                            </svg>
+                            </div>
                     <ul class="dropdown-menu">
                     
                     
