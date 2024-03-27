@@ -9,10 +9,10 @@ class DatabaseTest extends TestCase
         $db = Database::getInstance();
         $connection = $db->getConnection();
 
-        // التحقق من أن الاتصال ليس فارغًا
+        // check connection not null
         $this->assertNotNull($connection);
 
-        // التحقق من أن الاتصال هو كائن من فئة mysqli
+        // check connection its object of mysqli
         $this->assertInstanceOf(mysqli::class, $connection);
     }
 }

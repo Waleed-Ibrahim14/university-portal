@@ -9,10 +9,10 @@ class Database2Test extends TestCase{
     protected $pdo;
     public function testConnection(){
 
-        // إعداد PDO للاتصال بقاعدة البيانات
-    $this->pdo = new PDO('mysql:host=localhost;dbname=university_portal', 'root', '');
+        // initialize pdo to connect to database
+    $this->pdo = new PDO('mysql:host=localhost;dbname=portal', 'root', '');
 
-      // تنفيذ الـ migrations
+      //execute migrations
       $phinx = new \Phinx\Console\PhinxApplication();
       $phinx->run(new StringInput('migrate'), new NullOutput());
 

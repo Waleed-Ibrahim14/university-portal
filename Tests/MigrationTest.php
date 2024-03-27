@@ -8,7 +8,7 @@ class MigrationTest extends TestCase{
     protected $pdo;
     public function setUp(): void{
         // Initialize PDO to connect with database
-        $this->pdo = new PDO('mysql:host=localhost;dbname=university_portal', 'root', '');
+        $this->pdo = new PDO('mysql:host=localhost;dbname=portal', 'root', '');
 
         // exiqute migrations
         $phinx = new \Phinx\Console\PhinxApplication();
