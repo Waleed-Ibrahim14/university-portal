@@ -1,15 +1,15 @@
 <?php
 session_start();
-	if (!isset($_SESSION['id'])) { 
+	if (isset($_SESSION['id'])) { 
 		header("Location:login.php");
 	}
-	include_once("../includes/header.php");
+	include_once("includes/header.php");
 	include_once("../Models/DataBaseConnection.php");
 	$get_user = mysqli_query($connection, "SELECT * FROM `users` WHERE `id` = '$_SESSION[id]'");
 	$user = mysqli_fetch_object($get_user);
 ?>
 <body class="app">   	
-<?php include_once("../includes/sidepanel.php"); ?>
+<?php include_once("includes/sidepanel.php"); ?>
     
     <div class="app-wrapper">
 	    

@@ -9,8 +9,11 @@
 						<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30" role="img"><title>Menu</title><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg>
 					</a>
 				</div><!--//col-->
-				
-		            <div class="app-utilities col-auto">
+				<div class="app-utilities col-auto">
+				<a style="padding-right:30px; color:black;" href="login.php">scholarships</a>
+				<a style="padding-right:30px; color:black;" href="login.php">courses</a>
+				<a style="padding-right:30px; color:black;" href="login.php">groups</a>
+				<a style="padding-right:30px; color:black;" href="login.php">classes</a>
 			            <div class="app-utility-item app-notifications-dropdown dropdown">    
 				            <a class="dropdown-toggle no-toggle-arrow" id="notifications-dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false" title="Notifications">
 					            <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-bell icon" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
