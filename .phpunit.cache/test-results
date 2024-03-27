@@ -1,0 +1,1 @@
+{"version":1,"defects":{"InsertTest::testAddEditor":8,"MigrationTest::testUsersTableExists":8,"DatabaseTest::testConnection":8,"LoginTest::testValidLogin":7,"LoginTest::testInvalidLogin":8},"times":{"DatabaseTest::testConnection":1.943,"Database2Test::testConnection":0.012,"LoginTest::testValidLogin":0.132,"LoginTest::testInvalidLogin":0}}
