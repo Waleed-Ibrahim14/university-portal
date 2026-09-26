@@ -28,29 +28,35 @@ final class Users extends AbstractMigration{
             )");
 
 /*--------------------------------------------------------------------------
-| Insert Some Initial Data ::
-| NOTE: We now use role_id (FK to roles.id) instead of the old text `role`.
-|       scholarship_id and group_id are set to NULL because the original
-|       placeholder '-' was never a valid FK value.
-|       The IDs are resolved by subquery on roles.role_name to remain
-|       robust even if the IDs are not 1, 2, 3.
-|--------------------------------------------------------------------------*/
+    | Insert Some Initial Data ::
+    | NOTE: Role IDs are resolved in PHP first (not inside the SQL VALUES clause),
+    |       because MySQL does not reliably allow subqueries inside VALUES.
+    |--------------------------------------------------------------------------*/
     $adminpassword    = password_hash('admin',   PASSWORD_DEFAULT);
     $userpassword     = password_hash('user',    PASSWORD_DEFAULT);
     $teacherpassword  = password_hash('teacher', PASSWORD_DEFAULT);
+
+    // Resolve role IDs safely in PHP
+    $adminRole   = $this->fetchRow("SELECT id FROM roles WHERE role_name = 'admin'   LIMIT 1");
+    $userRole    = $this->fetchRow("SELECT id FROM roles WHERE role_name = 'user'    LIMIT 1");
+    $teacherRole = $this->fetchRow("SELECT id FROM roles WHERE role_name = 'teacher' LIMIT 1");
+
+    $adminRoleId   = $adminRole['id']   ?? 'NULL';
+    $userRoleId    = $userRole['id']    ?? 'NULL';
+    $teacherRoleId = $teacherRole['id'] ?? 'NULL';
 
     $this->execute("INSERT INTO users 
         (fullname, country, gender, username, email, password, profile, 
          role_id, user_status, scholarship_id, group_id) 
     VALUES  
         ('Waleed Ibrahim', 'sudan', 'male',   'waleed',  'waleed.it13@gmail.com', '$adminpassword',   '../../assets/images/users/edu.png', 
-         (SELECT id FROM roles WHERE role_name = 'admin' LIMIT 1),   'active',  NULL, NULL),
+         $adminRoleId,   'active',  NULL, NULL),
         ('First User',     'sudan', 'female', 'user',    'user@gmail.com',        '$userpassword',    '../../assets/images/users/edu.png', 
-         (SELECT id FROM roles WHERE role_name = 'user' LIMIT 1),    'blocked', NULL, NULL),
+         $userRoleId,    'blocked', NULL, NULL),
         ('First Teacher',  'sudan', 'male',   'teacher', 'teacher@gmail.com',     '$teacherpassword', '../../assets/images/users/edu.png', 
-         (SELECT id FROM roles WHERE role_name = 'teacher' LIMIT 1), 'blocked', NULL, NULL)
+         $teacherRoleId, 'blocked', NULL, NULL)
     ");
-    }
+}
 
     public function down(){
         /*--------------------------------------------------------------------------
