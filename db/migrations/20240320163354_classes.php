@@ -16,7 +16,7 @@ final class Classes extends AbstractMigration{
     }
     public function down(){
          /*--------------------------------------------------------------------------
-        | Drop the users table.
+        | Drop the classes table.
         | NOTE: Foreign keys are dropped automatically because they belong to
         |       this table. No need to drop them explicitly.
         |--------------------------------------------------------------------------*/
