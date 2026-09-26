@@ -1,13 +1,47 @@
 <?php
 session_start();
-	if (!isset($_SESSION['id'])) { 
-		header("Location:login.php");
-	}
-	include_once("../includes/header.php");
-	include_once("../Models/DataBaseConnection.php");
-	$get_user = mysqli_query($connection, "SELECT * FROM `users` WHERE `id` = '$_SESSION[id]'");
-	$user = mysqli_fetch_object($get_user);
+
+/*--------------------------------------------------------------------------
+| Authorization check: require a valid session.
+|--------------------------------------------------------------------------*/
+if (!isset($_SESSION['id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+include_once("../Models/DataBaseConnection.php");
+
+/*--------------------------------------------------------------------------
+| Load the currently logged-in user (prepared statement + JOIN with roles).
+| NOTE: The original query used string interpolation for $_SESSION['id'],
+|       which is vulnerable to SQL injection. We now use prepare/bind_param.
+|--------------------------------------------------------------------------*/
+$user = null;
+
+$stmt = $connection->prepare(
+    "SELECT u.*, r.role_name AS role_name
+     FROM users u
+     LEFT JOIN roles r ON u.role_id = r.id
+     WHERE u.id = ?
+     LIMIT 1"
+);
+
+if ($stmt !== false) {
+    $session_id = (int) $_SESSION['id'];
+    $stmt->bind_param("i", $session_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $result->num_rows > 0) {
+        $user = mysqli_fetch_object($result);
+        // Backward-compat: expose $user->role as an alias of role_name
+        $user->role = $user->role_name;
+    }
+    $stmt->close();
+}
+
+include_once("../includes/header.php");
 ?>
+
 <body class="app">   	
 <?php include_once("../includes/sidepanel.php"); ?>
     
@@ -39,7 +73,7 @@ session_start();
 								    <div class="row justify-content-between align-items-center">
 									    <div class="col-auto">
 										    <div class="item-label mb-2"><strong>Photo</strong></div>
-										    <div class="item-data"><img src="<?php echo $_SESSION['profile'];?>" alt="user profile" style="width: 24px;height: 24px;"></div>
+										    <div class="item-data"><img src="<?php echo htmlspecialchars($_SESSION['profile']); ?>" alt="user profile" style="width: 24px;height: 24px;"></div>
 									    </div><!--//col-->
 									    <div class="col text-end">
 										    <a class="btn-sm app-btn-secondary" href="#">Change</a>
@@ -50,7 +84,7 @@ session_start();
 								    <div class="row justify-content-between align-items-center">
 									    <div class="col-auto">
 										    <div class="item-label"><strong>Name</strong></div>
-									        <div class="item-data"><?php echo $user->fullname;?></div>
+									        <div class="item-data"><?php echo htmlspecialchars($user->fullname ?? '—'); ?></div>
 									    </div><!--//col-->
 									    <div class="col text-end">
 										    <a class="btn-sm app-btn-secondary" href="#">Change</a>
@@ -61,7 +95,7 @@ session_start();
 								    <div class="row justify-content-between align-items-center">
 									    <div class="col-auto">
 										    <div class="item-label"><strong>Email</strong></div>
-									        <div class="item-data"><?php echo $user->email;?></div>
+									        <div class="item-data"><?php echo htmlspecialchars($user->email ?? '—'); ?></div>
 									    </div><!--//col-->
 									    <div class="col text-end">
 										    <a class="btn-sm app-btn-secondary" href="#">Change</a>
@@ -73,7 +107,7 @@ session_start();
 								    <div class="row justify-content-between align-items-center">
 									    <div class="col-auto">
 										    <div class="item-label"><strong>Location</strong></div>
-									        <div class="item-data"><?php echo $user->country;?></div>
+									        <div class="item-data"><?php echo htmlspecialchars($user->country ?? '—'); ?></div>
 									    </div><!--//col-->
 									    <div class="col text-end">
 										    <a class="btn-sm app-btn-secondary" href="#">Change</a>
@@ -128,4 +162,3 @@ session_start();
 <?php
 	include_once("../includes/footer.php");
 ?>
-
