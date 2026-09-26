@@ -1,8 +1,18 @@
 <?php
-   session_start();
-   if ($_SESSION['role']  !== 'admin') { 
-	include_once("../includes/header.php");
+session_start();
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../includes/header.php");
 ?>
+
+<!-- ... باقي HTML كما هو بدون أي تعديل ... -->
+
+
 
 <body class="app">   	
 <?php include_once("../includes/sidepanel.php"); ?>
