@@ -122,7 +122,7 @@ if ($current_role !== 'admin') {
         $sql = "SELECT
                     u.*,
                     r.role_name          AS role_name,
-                    s.name               AS scholarship_display_name
+                    s.scholarship_name   AS scholarship_display_name
                 FROM users u
                 LEFT JOIN roles r        ON u.role_id        = r.id
                 LEFT JOIN scholarships s ON u.scholarship_id = s.id
