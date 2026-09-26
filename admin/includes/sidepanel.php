@@ -89,7 +89,7 @@ include_once("top_header.php");
 				<li class="submenu-item"><a class="submenu-link" href="create-scholarships.php">Create sholarship</a></li>
 				<li class="submenu-item"><a class="submenu-link" href="create-announcements.php">Create announcement</a></li>
 				<li class="submenu-item"><a class="submenu-link" href="create-depts.php">Create Dept</a></li>
-				<li class="submenu-item"><a class="submenu-link" href="Referrals.php">Create Referrals</a></li>
+				<li class="submenu-item"><a class="submenu-link" href="Referrals.php">Referrals</a></li>
 			</ul>
 			</div>
 		</li>			   
