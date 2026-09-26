@@ -1,202 +1,378 @@
 <?php
-// DataBase COnfig File
-require_once("../../admin/Models/DataBaseConnection.php");
 /*--------------------------------------------------------------------------
-| Error Function To Show Error Message   ::
+| DataBase Config File
 |--------------------------------------------------------------------------*/
-function error422($message){
-    $data =  $data =['status' => 422 ,'message' => $message];
-    header("HTTP/1.0 200 Unprocessable Entity");
+require_once("../../admin/Models/DataBaseConnection.php");
+
+/*--------------------------------------------------------------------------
+| Error Function To Show Error Message
+|--------------------------------------------------------------------------*/
+function error422($message) {
+    $data = ['status' => 422, 'message' => $message];
+    header("HTTP/1.0 422 Unprocessable Entity");
     echo json_encode($data);
     exit();
 }
+
 /*--------------------------------------------------------------------------
-| Create New User Funtion ::
+| Create New User Function ::
+|
+| CHANGES:
+|   - Accepts role_id / scholarship_id / group_id (integers) instead of
+|     the removed text columns (role, scholarship_name, group_name).
+|   - Uses prepared statements to prevent SQL Injection.
+|   - Hashes the password with password_hash() before inserting.
 |--------------------------------------------------------------------------*/
-function InserUser($userInput){
+function InserUser($userInput) {
     global $connection;
 
-    $fullname = mysqli_real_escape_string($connection, $userInput['fullname']);
-    $country = mysqli_real_escape_string($connection, $userInput['country']);
-    $gender = mysqli_real_escape_string($connection, $userInput['gender']);
-    $username = mysqli_real_escape_string($connection, $userInput['username']);
-    $email = mysqli_real_escape_string($connection, $userInput['email']);
-    $password = mysqli_real_escape_string($connection, $userInput['password']);
-    $profile = mysqli_real_escape_string($connection, $userInput['profile']);
-    $role = mysqli_real_escape_string($connection, $userInput['role']);
-    $user_status = mysqli_real_escape_string($connection, $userInput['user_status']);
-    $scholarship_name = mysqli_real_escape_string($connection, $userInput['scholarship_name']);
-    //check userInput NOt Null
-    if (empty(trim($fullname))) {
-        return error422('enter your fullname');
-    } else if(empty(trim($country))) {
-        return error422('enter your country');
-    } else if(empty(trim($gender))) {
-        return error422('enter your gender');
-    } else if(empty(trim($username))) {
-        return error422('enter your username');
-    } else if(empty(trim($email))) {
-        return error422('enter your email');
-    } else if(empty(trim($password))) {
-        return error422('enter your password');
-    } else if(empty(trim($profile))) {
-        return error422('enter your profile');
-    } else if(empty(trim($role))) {
-        return error422('enter your role');
-    } else if(empty(trim($user_status))) {
-        return error422('enter your user status');
-    } else if(empty(trim($scholarship_name))) {
-        return error422('enter your scholarship name');
-    }else{
-        // INSERT query
-        $query = "INSERT INTO users (fullname,country,gender,username,email,password,profile,role,user_status,scholarship_name)
-        VALUES ('$fullname','$country','$gender','$username','$email','$password','$profile','$role','$user_status','$scholarship_name')";
-        $insert_result = mysqli_query($connection,$query);
+    /*--------------------------------------------------------------------------
+    | Read and sanitize inputs.
+    | Integer fields use (int) cast; text fields are trimmed.
+    |--------------------------------------------------------------------------*/
+    $fullname       = trim($userInput['fullname']       ?? '');
+    $country        = trim($userInput['country']        ?? '');
+    $gender         = trim($userInput['gender']         ?? '');
+    $username       = trim($userInput['username']       ?? '');
+    $email          = trim($userInput['email']          ?? '');
+    $password_raw   = $userInput['password'] ?? '';
+    $profile        = trim($userInput['profile']        ?? '');
+    $user_status    = trim($userInput['user_status']    ?? '');
 
-        if($insert_result){
-            $data =['status' => 201 , 'message' => 'User Created Successfuly'];
-            header("HTTP/1.0 201 Created");
-            echo json_encode($data);
-        }else{
-            $data =['status' => 500 , 'message' => 'Internal Server Error'];
-            header("HTTP/1.0 500 Internal Server Error");
-            echo json_encode($data); 
+    // Optional FK fields (nullable)
+    $role_id        = isset($userInput['role_id'])        && $userInput['role_id'] !== ''        ? (int)$userInput['role_id']        : null;
+    $scholarship_id = isset($userInput['scholarship_id']) && $userInput['scholarship_id'] !== '' ? (int)$userInput['scholarship_id'] : null;
+    $group_id       = isset($userInput['group_id'])       && $userInput['group_id'] !== ''       ? (int)$userInput['group_id']       : null;
+
+    /*--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------*/
+    if (empty($fullname))                       return error422('enter your fullname');
+    if (empty($country))                        return error422('enter your country');
+    if (empty($gender))                         return error422('enter your gender');
+    if (empty($username))                       return error422('enter your username');
+    if (empty($email))                          return error422('enter your email');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return error422('enter a valid email');
+    if (empty($password_raw))                   return error422('enter your password');
+    if (strlen($password_raw) < 8)              return error422('password must be at least 8 characters');
+    if (empty($profile))                        return error422('enter your profile');
+    if (empty($user_status))                    return error422('enter your user status');
+
+    // Check role_id exists if provided
+    if ($role_id !== null) {
+        $chk = $connection->prepare("SELECT id FROM roles WHERE id = ? LIMIT 1");
+        $chk->bind_param("i", $role_id);
+        $chk->execute();
+        if ($chk->get_result()->num_rows === 0) {
+            $chk->close();
+            return error422('invalid role_id');
         }
+        $chk->close();
     }
+
+    /*--------------------------------------------------------------------------
+    | Check for duplicate username/email (prepared statement).
+    |--------------------------------------------------------------------------*/
+    $dup = $connection->prepare("SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1");
+    $dup->bind_param("ss", $username, $email);
+    $dup->execute();
+    if ($dup->get_result()->num_rows > 0) {
+        $dup->close();
+        return error422('username or email already exists');
+    }
+    $dup->close();
+
+    /*--------------------------------------------------------------------------
+    | Hash password
+    |--------------------------------------------------------------------------*/
+    $password = password_hash($password_raw, PASSWORD_DEFAULT);
+
+    /*--------------------------------------------------------------------------
+    | Insert (prepared statement)
+    |--------------------------------------------------------------------------*/
+    $sql = "INSERT INTO users
+                (fullname, country, gender, username, email, password, profile,
+                 role_id, user_status, scholarship_id, group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = $connection->prepare($sql);
+    if ($stmt === false) {
+        $data = ['status' => 500, 'message' => 'Internal Server Error: ' . $connection->error];
+        header("HTTP/1.0 500 Internal Server Error");
+        echo json_encode($data);
+        return;
+    }
+
+    $stmt->bind_param(
+        "sssssssisii",
+        $fullname, $country, $gender, $username, $email, $password, $profile,
+        $role_id, $user_status, $scholarship_id, $group_id
+    );
+
+    if ($stmt->execute()) {
+        $data = ['status' => 201, 'message' => 'User Created Successfully'];
+        header("HTTP/1.0 201 Created");
+        echo json_encode($data);
+    } else {
+        $data = ['status' => 500, 'message' => 'Internal Server Error'];
+        header("HTTP/1.0 500 Internal Server Error");
+        echo json_encode($data);
+    }
+    $stmt->close();
 }
+
 /*--------------------------------------------------------------------------
-| Get all users Funtion ::
+| Get all users Function ::
+|
+| CHANGES:
+|   - JOIN with roles to expose role_name (the old `role` column is gone).
+|   - Excludes the password hash from the response (security best practice).
 |--------------------------------------------------------------------------*/
-function getUserList(){ 
+function getUserList() {
     global $connection;
-    $sql_select = mysqli_query($connection, "SELECT * FROM `users`");
-    if($sql_select){
-        if(mysqli_num_rows($sql_select) > 0){
-            $response = mysqli_fetch_all($sql_select, MYSQLI_ASSOC);
-            $data =['status' => 200 ,'message' => 'Users Fetched Successfully','data' => $response];
+
+    $sql = "SELECT u.id, u.fullname, u.country, u.gender, u.username, u.email,
+                   u.profile, u.role_id, u.user_status, u.scholarship_id, u.group_id,
+                   u.created_at, u.updated_at,
+                   r.role_name AS role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            ORDER BY u.id DESC";
+
+    $result = mysqli_query($connection, $sql);
+
+    if ($result) {
+        if (mysqli_num_rows($result) > 0) {
+            $response = mysqli_fetch_all($result, MYSQLI_ASSOC);
+            $data = ['status' => 200, 'message' => 'Users Fetched Successfully', 'data' => $response];
             header("HTTP/1.0 200 Success");
             echo json_encode($data);
-        }else{
-            $data =['status' => 404 ,'message' => 'No User Found'];
+        } else {
+            $data = ['status' => 404, 'message' => 'No User Found'];
             header("HTTP/1.0 404 No User Found");
             echo json_encode($data);
         }
-    }else{
-        $data =['status' => 500 , 'message' => 'Internal Server Error'];
+    } else {
+        $data = ['status' => 500, 'message' => 'Internal Server Error'];
         header("HTTP/1.0 500 Internal Server Error");
         echo json_encode($data);
     }
 }
+
 /*--------------------------------------------------------------------------
-| Get Single User Funtion ::
+| Get Single User Function ::
+|
+| CHANGES:
+|   - JOIN with roles to expose role_name.
+|   - Prepared statement.
+|   - Excludes password hash from response.
 |--------------------------------------------------------------------------*/
-function getSingleUser($userParams){
-global $connection;
-    if($userParams['id'] == null){
+function getSingleUser($userParams) {
+    global $connection;
+
+    if (!isset($userParams['id']) || $userParams['id'] === null || $userParams['id'] === '') {
         return error422('Enter your user id');
     }
-    $userId = mysqli_real_escape_string($connection,$userParams['id']);
-    $user_query = "SELECT * FROM users WHERE id = '$userId' LIMIT 1";
-    $result = mysqli_query($connection, $user_query);
-    if($result){
-        if(mysqli_num_rows($result) == 1){
-            $response = mysqli_fetch_assoc($result);
-            $data =['status' => 200 ,'message' => 'User Fetched Successfully','data' => $response];
-            header("HTTP/1.0 200 Success");
-            echo json_encode($data); 
-        }else{
-            $data =['status' => 404 ,'message' => 'No User Found'];
-            header("HTTP/1.0 404 No User Found");
-            echo json_encode($data);
-        } 
-    }else{
-        $data =['status' => 500 ,'message' => 'Internal Server Error'];
-        header("HTTP/1.0 500 Internal Server Error");
-        echo json_encode($data);    
-    }
-}
-/*--------------------------------------------------------------------------
-| Update Funtion ::
-|--------------------------------------------------------------------------*/
-function UpdateUser($userInput, $userParams){
-    global $connection;
-    if(!isset($userParams['id'])){
-        return error422('User Id Not Found In URL');
-    }else if($userParams['id'] == null){
-        return error422('Enter User Id');
-    }
-    $userId = mysqli_real_escape_string($connection,$userParams['id']);
-    
-    $fullname = mysqli_real_escape_string($connection, $userInput['fullname']);
-    $country = mysqli_real_escape_string($connection, $userInput['country']);
-    $gender = mysqli_real_escape_string($connection, $userInput['gender']);
-    $username = mysqli_real_escape_string($connection, $userInput['username']);
-    $email = mysqli_real_escape_string($connection, $userInput['email']);
-    $password = mysqli_real_escape_string($connection, $userInput['password']);
-    $profile = mysqli_real_escape_string($connection, $userInput['profile']);
-    $role = mysqli_real_escape_string($connection, $userInput['role']);
-    $user_status = mysqli_real_escape_string($connection, $userInput['user_status']);
-    $scholarship_name = mysqli_real_escape_string($connection, $userInput['scholarship_name']);
-    //check userInput NOt Null
-    if (empty(trim($fullname))) {
-        return error422('enter your fullname');
-    } else if(empty(trim($country))) {
-        return error422('enter your country');
-    } else if(empty(trim($gender))) {
-        return error422('enter your gender');
-    } else if(empty(trim($username))) {
-        return error422('enter your username');
-    } else if(empty(trim($email))) {
-        return error422('enter your email');
-    } else if(empty(trim($password))) {
-        return error422('enter your password');
-    } else if(empty(trim($profile))) {
-        return error422('enter your profile');
-    } else if(empty(trim($role))) {
-        return error422('enter your role');
-    } else if(empty(trim($user_status))) {
-        return error422('enter your user status');
-    } else if(empty(trim($scholarship_name))) {
-        return error422('enter your scholarship name');
-    }else{
-        //UPDATE query 
-        $query = "UPDATE users SET  fullname = '$fullname',country = '$country',gender = '$gender',
-        username = '$username',email = '$email',password = '$password',profile = '$profile',
-        role = '$role',user_status = '$user_status',scholarship_name = '$scholarship_name' WHERE id = '$userId' LIMIT 1";
-        $update_result = mysqli_query($connection,$query);
 
-        if($update_result){
-            $data =['status' => 200 , 'message' => 'User Updated Successfuly'];
-            header("HTTP/1.0 200 OK");
-            echo json_encode($data);
-        }else{
-            $data =['status' => 500 , 'message' => 'Internal Server Error'];
-            header("HTTP/1.0 500 Internal Server Error");
-            echo json_encode($data); 
-        }
+    $userId = (int) $userParams['id'];
+
+    $sql = "SELECT u.id, u.fullname, u.country, u.gender, u.username, u.email,
+                   u.profile, u.role_id, u.user_status, u.scholarship_id, u.group_id,
+                   u.created_at, u.updated_at,
+                   r.role_name AS role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = ?
+            LIMIT 1";
+
+    $stmt = $connection->prepare($sql);
+    if ($stmt === false) {
+        $data = ['status' => 500, 'message' => 'Internal Server Error'];
+        header("HTTP/1.0 500 Internal Server Error");
+        echo json_encode($data);
+        return;
     }
+
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $response = $result->fetch_assoc();
+        $data = ['status' => 200, 'message' => 'User Fetched Successfully', 'data' => $response];
+        header("HTTP/1.0 200 Success");
+        echo json_encode($data);
+    } else {
+        $data = ['status' => 404, 'message' => 'No User Found'];
+        header("HTTP/1.0 404 No User Found");
+        echo json_encode($data);
+    }
+    $stmt->close();
 }
+
 /*--------------------------------------------------------------------------
-| Delete Funtion ::
+| Update Function ::
+|
+| CHANGES:
+|   - Accepts role_id / scholarship_id / group_id instead of removed text cols.
+|   - Prepared statement.
+|   - Re-hashes the password only if it's provided (otherwise keeps old one).
 |--------------------------------------------------------------------------*/
-function deleteleUser($userParams){
+function UpdateUser($userInput, $userParams) {
     global $connection;
-    if(!isset($userParams['id'])){
-        return error422('User Id Not Found In URL');
-    }else if($userParams['id'] == null){
+
+    if (!isset($userParams['id']) || $userParams['id'] === null || $userParams['id'] === '') {
         return error422('Enter User Id');
     }
-    $userId = mysqli_real_escape_string($connection,$userParams['id']);
-    $delete_query = "DELETE FROM users WHERE ID='$userId' LIMIT 1";
-    $delete_result = mysqli_query($connection,$delete_query);
-    if($delete_result){
-        $data =['status' => 200 , 'message' => 'User Deleted Successfuly'];
+
+    $userId = (int) $userParams['id'];
+
+    /*--------------------------------------------------------------------------
+    | Verify the user exists first
+    |--------------------------------------------------------------------------*/
+    $chk = $connection->prepare("SELECT id FROM users WHERE id = ? LIMIT 1");
+    $chk->bind_param("i", $userId);
+    $chk->execute();
+    if ($chk->get_result()->num_rows === 0) {
+        $chk->close();
+        $data = ['status' => 404, 'message' => 'User Not Found'];
+        header("HTTP/1.0 404 Not Found");
+        echo json_encode($data);
+        return;
+    }
+    $chk->close();
+
+    /*--------------------------------------------------------------------------
+    | Read inputs
+    |--------------------------------------------------------------------------*/
+    $fullname     = trim($userInput['fullname']    ?? '');
+    $country      = trim($userInput['country']     ?? '');
+    $gender       = trim($userInput['gender']      ?? '');
+    $username     = trim($userInput['username']    ?? '');
+    $email        = trim($userInput['email']       ?? '');
+    $profile      = trim($userInput['profile']     ?? '');
+    $user_status  = trim($userInput['user_status'] ?? '');
+    $password_raw = $userInput['password'] ?? '';
+
+    $role_id        = isset($userInput['role_id'])        && $userInput['role_id'] !== ''        ? (int)$userInput['role_id']        : null;
+    $scholarship_id = isset($userInput['scholarship_id']) && $userInput['scholarship_id'] !== '' ? (int)$userInput['scholarship_id'] : null;
+    $group_id       = isset($userInput['group_id'])       && $userInput['group_id'] !== ''       ? (int)$userInput['group_id']       : null;
+
+    /*--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------*/
+    if (empty($fullname))                       return error422('enter your fullname');
+    if (empty($country))                        return error422('enter your country');
+    if (empty($gender))                         return error422('enter your gender');
+    if (empty($username))                       return error422('enter your username');
+    if (empty($email))                          return error422('enter your email');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return error422('enter a valid email');
+    if (empty($profile))                        return error422('enter your profile');
+    if (empty($user_status))                    return error422('enter your user status');
+
+    /*--------------------------------------------------------------------------
+    | Update query — if password provided, hash it; otherwise keep existing.
+    |--------------------------------------------------------------------------*/
+    if (!empty($password_raw)) {
+        if (strlen($password_raw) < 8) {
+            return error422('password must be at least 8 characters');
+        }
+        $password = password_hash($password_raw, PASSWORD_DEFAULT);
+
+        $sql = "UPDATE users SET
+                    fullname = ?, country = ?, gender = ?, username = ?, email = ?,
+                    password = ?, profile = ?, role_id = ?, user_status = ?,
+                    scholarship_id = ?, group_id = ?
+                WHERE id = ? LIMIT 1";
+
+        $stmt = $connection->prepare($sql);
+        if ($stmt === false) {
+            $data = ['status' => 500, 'message' => 'Internal Server Error'];
+            header("HTTP/1.0 500 Internal Server Error");
+            echo json_encode($data);
+            return;
+        }
+
+        $stmt->bind_param(
+            "sssssssisiii",
+            $fullname, $country, $gender, $username, $email, $password, $profile,
+            $role_id, $user_status, $scholarship_id, $group_id, $userId
+        );
+    } else {
+        $sql = "UPDATE users SET
+                    fullname = ?, country = ?, gender = ?, username = ?, email = ?,
+                    profile = ?, role_id = ?, user_status = ?,
+                    scholarship_id = ?, group_id = ?
+                WHERE id = ? LIMIT 1";
+
+        $stmt = $connection->prepare($sql);
+        if ($stmt === false) {
+            $data = ['status' => 500, 'message' => 'Internal Server Error'];
+            header("HTTP/1.0 500 Internal Server Error");
+            echo json_encode($data);
+            return;
+        }
+
+        $stmt->bind_param(
+            "ssssssisiii",
+            $fullname, $country, $gender, $username, $email, $profile,
+            $role_id, $user_status, $scholarship_id, $group_id, $userId
+        );
+    }
+
+    if ($stmt->execute()) {
+        $data = ['status' => 200, 'message' => 'User Updated Successfully'];
         header("HTTP/1.0 200 OK");
         echo json_encode($data);
-    }else{
-        $data =['status' => 404 , 'message' => ' User Not Found'];
-        header("HTTP/1.0 404 Not Found");
-        echo json_encode($data); 
-    }  
+    } else {
+        $data = ['status' => 500, 'message' => 'Internal Server Error'];
+        header("HTTP/1.0 500 Internal Server Error");
+        echo json_encode($data);
+    }
+    $stmt->close();
+}
+
+/*--------------------------------------------------------------------------
+| Delete Function ::
+|
+| CHANGES:
+|   - Prepared statement.
+|   - Fixed column case (ID → id).
+|--------------------------------------------------------------------------*/
+function deleteleUser($userParams) {
+    global $connection;
+
+    if (!isset($userParams['id']) || $userParams['id'] === null || $userParams['id'] === '') {
+        return error422('Enter User Id');
+    }
+
+    $userId = (int) $userParams['id'];
+
+    $stmt = $connection->prepare("DELETE FROM users WHERE id = ? LIMIT 1");
+    if ($stmt === false) {
+        $data = ['status' => 500, 'message' => 'Internal Server Error'];
+        header("HTTP/1.0 500 Internal Server Error");
+        echo json_encode($data);
+        return;
+    }
+
+    $stmt->bind_param("i", $userId);
+
+    if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+            $data = ['status' => 200, 'message' => 'User Deleted Successfully'];
+            header("HTTP/1.0 200 OK");
+            echo json_encode($data);
+        } else {
+            $data = ['status' => 404, 'message' => 'User Not Found'];
+            header("HTTP/1.0 404 Not Found");
+            echo json_encode($data);
+        }
+    } else {
+        $data = ['status' => 500, 'message' => 'Internal Server Error'];
+        header("HTTP/1.0 500 Internal Server Error");
+        echo json_encode($data);
+    }
+    $stmt->close();
 }
 ?>
