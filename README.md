@@ -36,4 +36,4 @@ http://localhost/university-portal/RESTAPI/scholarship/update-scholarship-api.ph
 http://localhost/university-portal/RESTAPI/scholarship/delete-scholarship-api.php
 
 
-`I feel sorry that some tasks are incomplete, and this is due to circumstances beyond my control that prevented me from completing the task 100%.`
+
