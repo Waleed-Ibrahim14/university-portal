@@ -18,5 +18,12 @@ final class Roles extends AbstractMigration{
 |--------------------------------------------------------------------------*/
         $this->execute("INSERT INTO roles (role_name) VALUES ('admin'),('user'),('teacher')");      
     }
-    public function down(){ }
+    public function down(){
+         /*--------------------------------------------------------------------------
+        | Drop the users table.
+        | NOTE: Foreign keys are dropped automatically because they belong to
+        |       this table. No need to drop them explicitly.
+        |--------------------------------------------------------------------------*/
+        $this->execute("DROP TABLE roles");
+    }
 }
