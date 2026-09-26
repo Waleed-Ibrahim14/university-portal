@@ -1,23 +1,49 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-   include_once("../Models/DataBaseConnection.php");
-   include_once("../includes/header.php");
-    // Delete scholarship
-    $msg= '';
-    if (isset($_GET['scholarship_status']) AND isset($_GET['scholarId'])) {
-        $sql = mysqli_query($connection, "UPDATE `scholarships` SET `scholarship_status` = '$_GET[scholarship_status]' WHERE `id` = '$_GET[scholarId]'");
-            if (isset($sql)) {
-            $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">User Updated Successfuly</div>';
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../Models/DataBaseConnection.php");
+    include_once("../includes/header.php");
+
+    $msg = '';
+
+    /*--------------------------------------------------------------------------
+    | Update scholarship status (Prepared Statement).
+    |--------------------------------------------------------------------------*/
+    if (isset($_GET['scholarship_status'], $_GET['scholarId'])) {
+        $new_status = $_GET['scholarship_status'];
+        $scholar_id = (int) $_GET['scholarId'];
+
+        // Whitelist allowed statuses
+        if (in_array($new_status, ['active', 'blocked'], true) && $scholar_id > 0) {
+            $upd = $connection->prepare("UPDATE scholarships SET scholarship_status = ? WHERE id = ?");
+            $upd->bind_param("si", $new_status, $scholar_id);
+            if ($upd->execute()) {
+                $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">Scholarship Updated Successfully</div>';
+            }
+            $upd->close();
         }
     }
-    // Delete User 
+
+    /*--------------------------------------------------------------------------
+    | Delete scholarship (Prepared Statement).
+    |--------------------------------------------------------------------------*/
     if (isset($_GET['delete'])) {
-        $sql = mysqli_query($connection, "DELETE FROM `scholarships` WHERE `id` = '$_GET[delete]'");
-        if (isset($sql)) {
-        $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">User Deleted Successfuly</div>';
+        $del_id = (int) $_GET['delete'];
+        if ($del_id > 0) {
+            $del = $connection->prepare("DELETE FROM scholarships WHERE id = ?");
+            $del->bind_param("i", $del_id);
+            if ($del->execute()) {
+                $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">Scholarship Deleted Successfully</div>';
+            }
+            $del->close();
         }
-    }           
+    }
 ?>
 
 <body class="app">   	
@@ -52,8 +78,6 @@ if ($_SESSION['role']  !== 'admin') {
 				    </div><!--//col-auto-->
 			    </div><!--//row-->
 
-				
-				
 <div class="tab-content" id="orders-table-tab-content">
 <div class="tab-pane fade show active" id="orders-all" role="tabpanel" aria-labelledby="orders-all-tab">
 <div class="app-card app-card-orders-table shadow-sm mb-5">
@@ -62,14 +86,14 @@ if ($_SESSION['role']  !== 'admin') {
     <table class="table app-table-hover mb-0 text-left">
         <thead>
             <tr>
-                <th class="cell" >Order</th>
+                <th class="cell">Order</th>
                 <th class="cell">Image</th>
                 <th class="cell">Name</th>
                 <th class="cell">Status</th>
-                <th class="cell">amount</th>
-                <th class="cell">date</th>
+                <th class="cell">Amount</th>
+                <th class="cell">Date</th>
                 <th class="cell">Description</th>
-                <th class="cell">added by</th>
+                <th class="cell">Added by</th>
                 <th class="cell">Created at</th>
                 <th class="cell">Updated at</th>
                 <th class="cell" colspan="2">Actions</th>
@@ -77,66 +101,77 @@ if ($_SESSION['role']  !== 'admin') {
         </thead>
         <tbody>
 <?php
-        // Pagination
+        /*--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------*/
         $per_page = 5;
-        if (!isset($_GET['page'])) {
-          $page = 1;
-        }else {
-          $page = (int)$_GET['page'];
-        }
-        $start_from = ($page-1) * $per_page;
-        
-        //GET All users with role User
-        $users = mysqli_query($connection, "SELECT * FROM `scholarships` ORDER BY `id` DESC LIMIT $start_from , $per_page");
-        $num = 1;
-        if (mysqli_num_rows($users) > 0) {
-        while ($scholarshipItem = mysqli_fetch_assoc($users)) {
-        echo '<tr>
-            <td class="cell">'.$scholarshipItem['id'].'</td>
-            <td class="cell"><img src="../../assets/images/scholarships/'.$scholarshipItem['image'].'" class="img-rounded" width="30px"/></td>
-            <td class="cell">'.$scholarshipItem['scholarship_name'].'</td>
-            <td class="cell">'.$scholarshipItem['scholarship_status'].'</td>
-            <td class="cell">'.$scholarshipItem['amount'].'</td>
-            <td class="cell">'.$scholarshipItem['date'].'</td>
-            <td class="cell">'.$scholarshipItem['added_by'].'</td>
-            <td class="cell">'.$scholarshipItem['created_at'].'</td>
-            <td class="cell">'.$scholarshipItem['updated_at'].'</td>';
-            if (!$_SESSION['role']  == 'teacher') {
-                echo '<td class="cell">'.($scholarshipItem['scholarship_status'] == 'blocked' ? 
-                '<a href="show-scholarships.php?scholarship_status=active&scholarId='.$scholarshipItem['id'].'&page='.$page.'" class="btn btn-success btn-sm"><span>Activat</span></a>' : 
-                '<a href="show-scholarships.php?scholarship_status=blocked&scholarId='.$scholarshipItem['id'].'&page='.$page.'" class="btn btn-info btn-sm">block</a>').'</td>
-                <td class="cell"><a href="show-scholarships.php?delete='.$scholarshipItem['id'].'&page='.$page.'" class="btn btn-danger btn-sm">delete</i></a></td>';
-            }else{
-                echo '<td class="cell"></td>';          
-                echo '<td class="cell"></td>';
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $start_from = ($page - 1) * $per_page;
+
+        /*--------------------------------------------------------------------------
+        | Main query: get all scholarships.
+        |--------------------------------------------------------------------------*/
+        $scholarshipsQuery = mysqli_query(
+            $connection,
+            "SELECT * FROM `scholarships` ORDER BY `id` DESC LIMIT " . (int)$start_from . ", " . (int)$per_page
+        );
+
+        if ($scholarshipsQuery && mysqli_num_rows($scholarshipsQuery) > 0) {
+            while ($scholarshipItem = mysqli_fetch_assoc($scholarshipsQuery)) {
+                echo '<tr>
+                    <td class="cell">'.(int)$scholarshipItem['id'].'</td>
+                    <td class="cell"><img src="../../assets/images/scholarships/'.htmlspecialchars($scholarshipItem['image']).'" class="img-rounded" width="30px"/></td>
+                    <td class="cell">'.htmlspecialchars($scholarshipItem['scholarship_name'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($scholarshipItem['scholarship_status'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($scholarshipItem['amount'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($scholarshipItem['date'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($scholarshipItem['scholarship_description'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($scholarshipItem['added_by'] ?? '—').'</td>
+                    <td class="cell">'.$scholarshipItem['created_at'].'</td>
+                    <td class="cell">'.$scholarshipItem['updated_at'].'</td>';
+
+                // FIXED: was `!$_SESSION['role'] == 'teacher'` (always false)
+                // Original intent preserved: hide action buttons from teachers.
+                if ($current_role !== 'teacher') {
+                    echo '<td class="cell">'
+                        . ($scholarshipItem['scholarship_status'] == 'blocked'
+                            ? '<a href="show-scholarships.php?scholarship_status=active&scholarId='.$scholarshipItem['id'].'&page='.$page.'" class="btn btn-success btn-sm"><span>Activate</span></a>'
+                            : '<a href="show-scholarships.php?scholarship_status=blocked&scholarId='.$scholarshipItem['id'].'&page='.$page.'" class="btn btn-info btn-sm">block</a>')
+                        . '</td>
+                          <td class="cell"><a href="show-scholarships.php?delete='.$scholarshipItem['id'].'&page='.$page.'" class="btn btn-danger btn-sm">delete</a></td>';
+                } else {
+                    echo '<td class="cell"></td>';
+                    echo '<td class="cell"></td>';
                 }
                 echo '</tr>';
-            $num++;
-           }
+            }
         } else {
-                echo '<tr><td colspan="13" class="cell">No sholarships found.</td></tr>';
+            /* FIXED: was colspan="13" but the table has 12 columns */
+            echo '<tr><td colspan="12" class="cell">No scholarships found.</td></tr>';
         }
- ?>
-		
-										</tbody>
-									</table>
+?>
+        </tbody>
+    </table>
 </div><!--//table-responsive-->
-    
 </div><!--//app-card-body-->		
 </div><!--//app-card-->
+
 <!--------------------------------------------------
 |   Pagination
+|   FIXED: was querying `users WHERE role = 'user'` (copy-paste bug)
+|          — now it correctly counts scholarships.
 --------------------------------------------------->
 <?php
-    $page_sql = mysqli_query($connection, "SELECT * FROM `users` WHERE `role` = 'user'");
-    $count_page = mysqli_num_rows($page_sql);
-    $total_page = ceil($count_page / $per_page);
+    $page_sql = mysqli_query($connection, "SELECT COUNT(*) AS total FROM `scholarships`");
+    $count_page = $page_sql ? (int)mysqli_fetch_assoc($page_sql)['total'] : 0;
+    $total_page = (int) ceil($count_page / $per_page);
 ?>
      <nav class="app-pagination">
           <ul class="pagination justify-content-center">
             <?php
                 for ($i = 1; $i <= $total_page; $i++) {
-                  echo '<li class="page-item" '.($page == $i ? 'class="active"' : '').'><a class="page-link" href="show-scholarships.php?page='.$i.'">'.$i.'</a></li>';
+                    $active = ($page == $i) ? ' active' : '';
+                    echo '<li class="page-item'.$active.'"><a class="page-link" href="show-scholarships.php?page='.$i.'">'.$i.'</a></li>';
                 }
             ?>
           </ul>
@@ -144,17 +179,15 @@ if ($_SESSION['role']  !== 'admin') {
 <!--------------------------------------------------
 |   Pagination
 --------------------------------------------------->
-						        
-									</div><!--//tab-content-->
-				
-				
-			    
-		    </div><!--//container-fluid-->
-	    </div><!--//app-content-->
-	    
+                        </div><!--//tab-content-->
+    </div><!--//container-fluid-->
+    </div><!--//app-content-->
+</div><!--//app-wrapper-->
+
 <?php
 	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+} else {
+	header("Location: login.php");
+	exit;
 }
 ?>
