@@ -1,21 +1,48 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-	include_once("../includes/header.php");
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../includes/header.php");
     include_once("../Models/DataBaseConnection.php");
-    // Delete User Where User Id => userId
-    $msg= '';
-    if (isset($_GET['user_status']) AND isset($_GET['user'])) {
-        $stmt = mysqli_query($connection, "UPDATE `users` SET `user_status` = '$_GET[user_status]' WHERE `id` = '$_GET[user]'");
-            if (isset($stmt)) {
-            $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">User Updated Successfuly</div>';
+
+    $msg = '';
+
+    /*--------------------------------------------------------------------------
+    | Update user status (Prepared Statement).
+    | NOTE: This block is inherited from show-users.php but has no UI trigger
+    |       on this page — kept for parity, secured here.
+    |--------------------------------------------------------------------------*/
+    if (isset($_GET['user_status'], $_GET['user'])) {
+        $new_status = $_GET['user_status'];
+        $user_id    = (int) $_GET['user'];
+
+        if (in_array($new_status, ['active', 'blocked'], true) && $user_id > 0) {
+            $upd = $connection->prepare("UPDATE users SET user_status = ? WHERE id = ?");
+            $upd->bind_param("si", $new_status, $user_id);
+            if ($upd->execute()) {
+                $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">User Updated Successfully</div>';
+            }
+            $upd->close();
         }
     }
-    // Delete Certificate 
+
+    /*--------------------------------------------------------------------------
+    | Delete certificate (Prepared Statement).
+    |--------------------------------------------------------------------------*/
     if (isset($_GET['delete'])) {
-        $stmt = mysqli_query($connection, "DELETE FROM `certificates` WHERE `id` = '$_GET[delete]'");
-        if (isset($stmt)) {
-        $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">Certificate Deleted Successfuly</div>';
+        $del_id = (int) $_GET['delete'];
+        if ($del_id > 0) {
+            $del = $connection->prepare("DELETE FROM certificates WHERE id = ?");
+            $del->bind_param("i", $del_id);
+            if ($del->execute()) {
+                $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">Certificate Deleted Successfully</div>';
+            }
+            $del->close();
         }
     }
 ?>
@@ -54,79 +81,80 @@ if ($_SESSION['role']  !== 'admin') {
 			    
 			    <div class="row g-4">
 <?php
-// Pagination
+    /*--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------*/
     $per_page = 5;
-    if (!isset($_GET['page'])) {
-    $page = 1;
-    }else {
-    $page = (int)$_GET['page'];
-    }
-    $start_from = ($page-1) * $per_page;
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $start_from = ($page - 1) * $per_page;
 
-    //GET All Certificates 
-    $users = mysqli_query($connection, "SELECT * FROM `certificates` ORDER BY `id` DESC LIMIT $start_from , $per_page");
-    $num = 1;
+    /*--------------------------------------------------------------------------
+    | GET All Certificates
+    | NOTE: The original code reused variable names ($users, $show_user) from
+    |       show-users.php — we keep them for minimal diff, but the comments
+    |       clarify the meaning.
+    |--------------------------------------------------------------------------*/
+    $users = mysqli_query($connection, "SELECT * FROM `certificates` ORDER BY `id` DESC LIMIT " . (int)$start_from . ", " . (int)$per_page);
 
-    if (mysqli_num_rows($users) > 0) {
+    if ($users && mysqli_num_rows($users) > 0) {
         while ($show_user = mysqli_fetch_assoc($users)) {
-        $certificate_file = $show_user['certificate_file'];
-        $temp_pdf_path = "../../assets/images/certificates/".basename($certificate_file);
-        $temp_pdf_path = "../../assets/images/certificates/$certificate_file";
+            $certificate_file = $show_user['certificate_file'];
+            $temp_pdf_path    = "../../assets/images/certificates/" . basename($certificate_file);
+            $temp_pdf_path    = "../../assets/images/certificates/$certificate_file";
 
-            // To Show file type ans size
-            $imageFileType = strtolower(pathinfo($temp_pdf_path,PATHINFO_EXTENSION));
+            // File type and size
+            $imageFileType = strtolower(pathinfo($temp_pdf_path, PATHINFO_EXTENSION));
             file_put_contents($temp_pdf_path, $certificate_file);
             $filesize = filesize($temp_pdf_path);
-        echo '
-        <div class="col-6 col-md-4 col-xl-3 col-xxl-2">
-            <div class="app-card app-card-doc shadow-sm h-100">
-                <div class="app-card-thumb-holder p-4">
-                    <span class="icon-holder">
-                        <i class="fas fa-file-pdf pdf-file"></i>
-                    </span>
-                        <a class="app-card-link-mask" href="../../assets/images/certificates/'.$certificate_file.'"></a>
-                </div>
-                <div class="app-card-body p-3 has-card-actions">
-                    
-                    <h4 class="app-doc-title truncate mb-0"><a href="#file-link">'.$show_user['certificate_name'].'</a></h4>
-                    <div class="app-doc-meta">
-                        <ul class="list-unstyled mb-0">
-                            <li><span class="text-muted">Type:</span> '.$imageFileType.'</li>
-                            <li><span class="text-muted">Size:</span> '.$filesize.'</li>
-                            <li><span class="text-muted">Created: </span>'.$show_user['created_at'].'</li>
-                        </ul>
-                    </div>
-                    
-        <div class="app-card-actions">
-            <div class="dropdown">
-                <div class="dropdown-toggle no-toggle-arrow" data-bs-toggle="dropdown" aria-expanded="false">
-                    <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-three-dots-vertical" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd" d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-                            </svg>
-                            </div>
-                    <ul class="dropdown-menu">
-                    
-                    
-                    <li><a class="dropdown-item" href="update-certificate.php?certificateId='.$show_user['id'].'"><svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pencil me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175l-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
-                    </svg>Edit</a></li>
-                    <li><hr class="dropdown-divider"></li>
 
-                    <li><a class="dropdown-item" href="show-certificates.php?delete='.$show_user['id'].'&page='.$page.'">
-                    <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                    </svg>Delete</a>
-                    </li>
-                </ul>
-                        </div>
+            echo '
+            <div class="col-6 col-md-4 col-xl-3 col-xxl-2">
+                <div class="app-card app-card-doc shadow-sm h-100">
+                    <div class="app-card-thumb-holder p-4">
+                        <span class="icon-holder">
+                            <i class="fas fa-file-pdf pdf-file"></i>
+                        </span>
+                            <a class="app-card-link-mask" href="../../assets/images/certificates/'.htmlspecialchars($certificate_file).'"></a>
                     </div>
+                    <div class="app-card-body p-3 has-card-actions">
                         
-                </div>
+                        <h4 class="app-doc-title truncate mb-0"><a href="#file-link">'.htmlspecialchars($show_user['certificate_name']).'</a></h4>
+                        <div class="app-doc-meta">
+                            <ul class="list-unstyled mb-0">
+                                <li><span class="text-muted">Type:</span> '.htmlspecialchars($imageFileType).'</li>
+                                <li><span class="text-muted">Size:</span> '.$filesize.'</li>
+                                <li><span class="text-muted">Created: </span>'.$show_user['created_at'].'</li>
+                            </ul>
+                        </div>
+                        
+            <div class="app-card-actions">
+                <div class="dropdown">
+                    <div class="dropdown-toggle no-toggle-arrow" data-bs-toggle="dropdown" aria-expanded="false">
+                        <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-three-dots-vertical" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                                </svg>
+                                </div>
+                        <ul class="dropdown-menu">
+                        
+                        <li><a class="dropdown-item" href="update-certificate.php?certificateId='.$show_user['id'].'"><svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pencil me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175l-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+                        </svg>Edit</a></li>
+                        <li><hr class="dropdown-divider"></li>
 
-            </div>
-        </div>';
-        $num++;
+                        <li><a class="dropdown-item" href="show-certificates.php?delete='.$show_user['id'].'&page='.$page.'">
+                        <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                        </svg>Delete</a>
+                        </li>
+                    </ul>
+                            </div>
+                        </div>
+                            
+                    </div>
+
+                </div>
+            </div>';
         }
     } else {
         echo '<div class="alert alert-danger" role="alert">No certificate found</div>';
@@ -136,15 +164,16 @@ if ($_SESSION['role']  !== 'admin') {
     |   Pagination
     --------------------------------------------------->
     <?php
-    $page_sql = mysqli_query($connection, "SELECT * FROM `certificates`");
-    $count_page = mysqli_num_rows($page_sql);
-    $total_page = ceil($count_page / $per_page);
+    $page_sql = mysqli_query($connection, "SELECT COUNT(*) AS total FROM `certificates`");
+    $count_page = $page_sql ? (int)mysqli_fetch_assoc($page_sql)['total'] : 0;
+    $total_page = (int) ceil($count_page / $per_page);
     ?>
     <nav class="app-pagination">
     <ul class="pagination justify-content-center">
     <?php
     for ($i = 1; $i <= $total_page; $i++) {
-    echo '<li class="page-item" '.($page == $i ? 'class="active"' : '').'><a class="page-link" href="show-certificates.php?page='.$i.'">'.$i.'</a></li>';
+        $active = ($page == $i) ? ' active' : '';
+        echo '<li class="page-item'.$active.'"><a class="page-link" href="show-certificates.php?page='.$i.'">'.$i.'</a></li>';
     }
     ?>
     </ul>
@@ -157,7 +186,8 @@ if ($_SESSION['role']  !== 'admin') {
 	    
 <?php
 	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+} else {
+	header("Location: login.php");
+	exit;
 }
 ?>
