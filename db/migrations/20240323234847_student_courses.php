@@ -9,10 +9,14 @@ final class StudentCourses extends AbstractMigration{
     public function up(){
         $this->execute("CREATE TABLE student_courses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                student_id INT,
-                course_id INT,
-                FOREIGN KEY (student_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-                FOREIGN KEY (course_id) REFERENCES courses(id) ON UPDATE CASCADE ON DELETE CASCADE,
+                student_id INT NULL,
+                course_id INT NULL,
+                FOREIGN KEY (student_id) REFERENCES users(id) 
+                    ON UPDATE CASCADE 
+                    ON DELETE SET NULL,
+                FOREIGN KEY (course_id) REFERENCES courses(id) 
+                    ON UPDATE CASCADE 
+                    ON DELETE SET NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
         "); 
