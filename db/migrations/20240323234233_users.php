@@ -16,12 +16,15 @@ final class Users extends AbstractMigration{
                 email VARCHAR(255) NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 profile text NOT NULL,
-                role VARCHAR(50) NOT NULL,
+                role_id INT NULL,
                 user_status VARCHAR(10) NOT NULL,
-                scholarship_name VARCHAR(10) NOT NULL,
-                group_name VARCHAR(10) NOT NULL,
+                scholarship_id INT NULL,
+                group_id INT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
+                FOREIGN KEY (scholarship_id) REFERENCES scholarships(id) ON DELETE SET NULL,
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
             ");
 
 /*--------------------------------------------------------------------------
@@ -36,5 +39,7 @@ final class Users extends AbstractMigration{
             ('First Teacher', 'sudan', 'male','teacher','teacher@gmail.com', '$teacherpassword', '../../assets/images/users/edu.png','teacher','blocked','-','-')
         ");
     }
-    public function down(){ }
+    public function down(){
+        $this->execute("DROP TABLE users");
+    }
 }
