@@ -14,11 +14,19 @@ final class Scholarships extends AbstractMigration{
                 scholarship_description TEXT NOT NULL,
                 amount DECIMAL(10, 2)  NOT NULL,
                 date DATE  NOT NULL,
-                scholarship_status VARCHAR(10) NOT NULL,
-                added_by VARCHAR(10) NOT NULL,
+                scholarship_status VARCHAR(20) NOT NULL,
+                added_by VARCHAR(50) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
-        "); 
+        ");
+        $this->execute("INSERT INTO scholarships 
+    (scholarship_name, image, scholarship_description, amount, date, scholarship_status, added_by) 
+VALUES 
+    ('Scholarship A', '', 'Description A', 1000.00, '2024-01-01', 'active', 'admin'),
+    ('Scholarship B', '', 'Description B', 2000.00, '2024-01-01', 'active', 'admin')
+");
     }
-    public function down(){ }
+    public function down(){
+        $this->execute("DROP TABLE scholarships");
+    }
 }
