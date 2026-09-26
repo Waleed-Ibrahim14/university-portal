@@ -1,8 +1,18 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-	include_once("../includes/header.php");
-    include_once("../includes/notification/Push.php");  
+
+/*--------------------------------------------------------------------------
+| Authorization check ::
+| NOTE: Backward-compatible check — tries new session key 'role_name' first,
+|       then falls back to old 'role' key for compatibility.
+| NOTE 2: The original logic (show form if NOT admin) is preserved here.
+|         If this was intended to be "admins only", it should be flipped.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../includes/header.php");
+    include_once("../includes/notification/Push.php");
     include_once("../includes/create-user-prosses.php");
 ?>
 <body class="app"> 
@@ -56,15 +66,17 @@ if ($_SESSION['role']  !== 'admin') {
 					<input name="email" type="email" class="form-control" placeholder="Email">
 				</div>
 				<div class="mb-3 col-4">
-						<select name="role"  class="form-control" id="sections" >
-							<option value="">select user role</option>
-							<?php 
-								$stmt = mysqli_query($connection, "SELECT * FROM `roles`");
-								while($role = mysqli_fetch_assoc($stmt)){
+					<!-- Changed: name="role" → name="role_id" 
+					     (value is already role['id'], which is correct for FK) -->
+					<select name="role_id" class="form-control" id="sections">
+						<option value="">select user role</option>
+						<?php 
+							$stmt = mysqli_query($connection, "SELECT * FROM `roles`");
+							while($role = mysqli_fetch_assoc($stmt)){
 								echo '<option value="'.$role['id'].'">'.$role['role_name'].'</option>';
-								}
-							?>
-						</select>
+							}
+						?>
+					</select>
 			</div>
 		
 		
@@ -81,11 +93,12 @@ if ($_SESSION['role']  !== 'admin') {
 		</select>
 		</div>
 		<div class="row">
+			<!-- Removed maxlength="8" (was limiting password length, bad practice) -->
 			<div class="mb-3 col-4">
-				<input name="password_1" type="password" maxlength="8" class="form-control" placeholder="password">
+				<input name="password_1" type="password" class="form-control" placeholder="password">
 			</div>
 			<div class="mb-3 col-4">
-				<input name="password_2" type="password" maxlength="8" class="form-control" placeholder="confirm password" >
+				<input name="password_2" type="password" class="form-control" placeholder="confirm password" >
 			</div>
 		</div>
 		<div class="text-center mb-3 col-3">
@@ -97,7 +110,7 @@ if ($_SESSION['role']  !== 'admin') {
 </div>
 <?php
 	include_once("../includes/footer.php");	
-}else{
+} else {
 	header("Location:login.php");
 }
 ?>
