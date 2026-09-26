@@ -47,8 +47,6 @@ if (isset($_GET['delete'])) {
 include_once("../includes/header.php");
 ?>
 
-<!-- ... باقي HTML كما هو ... -->
-
 <body class="app">
 <?php include_once("../includes/sidepanel.php"); ?>
 
@@ -124,8 +122,8 @@ include_once("../includes/header.php");
         $sql = "SELECT
                     u.*,
                     r.role_name          AS role_name,
-                    s.name               AS scholarship_display_name,
-                    g.name               AS group_display_name
+                    s.scholarship_name   AS scholarship_display_name,
+                    g.group_name         AS group_display_name
                 FROM users u
                 LEFT JOIN roles r        ON u.role_id       = r.id
                 LEFT JOIN scholarships s ON u.scholarship_id = s.id
