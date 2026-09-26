@@ -21,7 +21,7 @@ final class Schedule extends AbstractMigration{
 
     public function down(){
          /*--------------------------------------------------------------------------
-        | Drop the users table.
+        | Drop the schedule table.
         | NOTE: Foreign keys are dropped automatically because they belong to
         |       this table. No need to drop them explicitly.
         |--------------------------------------------------------------------------*/
