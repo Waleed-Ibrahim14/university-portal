@@ -1,8 +1,55 @@
 <?php
-	include_once("../Models/DataBaseConnection.php");
-	$get_user = mysqli_query($connection, "SELECT * FROM `users`");
-	$user = mysqli_fetch_object($get_user);
-	include_once("top_header.php");
+/*--------------------------------------------------------------------------
+| Load the currently logged-in user only (not the first user in the table).
+| Previously, the query had no WHERE clause and took the first row,
+| which was a logic bug and could show the wrong user's data in the header.
+|
+| We use a JOIN with roles so that `role_name` is available
+| (the old `role` column no longer exists after the FK refactor).
+|--------------------------------------------------------------------------*/
+include_once("../Models/DataBaseConnection.php");
+
+// Fallback: if session was not started by the parent file, start it safely
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$user = null;
+
+if (!empty($_SESSION['id'])) {
+    $user_id = (int) $_SESSION['id'];
+
+    // ------------------------------------------------------------------
+    // Prepared statement + JOIN with roles for role_name
+    // ------------------------------------------------------------------
+    $stmt = $connection->prepare(
+        "SELECT u.*,
+                r.role_name AS role_name
+         FROM users u
+         LEFT JOIN roles r ON u.role_id = r.id
+         WHERE u.id = ?
+         LIMIT 1"
+    );
+
+    if ($stmt === false) {
+        // Log the error instead of failing silently
+        error_log("sidepanel.php prepare failed: " . $connection->error);
+    } else {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $result->num_rows > 0) {
+            $user = mysqli_fetch_object($result);
+
+            // Backward-compat: expose $user->role as an alias of role_name
+            // so that any legacy file still reading `$user->role` keeps working.
+            $user->role = $user->role_name;
+        }
+        $stmt->close();
+    }
+}
+
+include_once("top_header.php");
 ?>
 <div id="app-sidepanel" class="app-sidepanel"> 
 	<div id="sidepanel-drop" class="sidepanel-drop"></div>
