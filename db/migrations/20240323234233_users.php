@@ -22,24 +22,42 @@ final class Users extends AbstractMigration{
                 group_id INT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
-                FOREIGN KEY (scholarship_id) REFERENCES scholarships(id) ON DELETE SET NULL,
-                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
-            ");
+                FOREIGN KEY (role_id)        REFERENCES roles(id)         ON DELETE SET NULL,
+                FOREIGN KEY (scholarship_id) REFERENCES scholarships(id)  ON DELETE SET NULL,
+                FOREIGN KEY (group_id)       REFERENCES groups(id)        ON DELETE SET NULL
+            )");
 
 /*--------------------------------------------------------------------------
 | Insert Some Initial Data ::
+| NOTE: We now use role_id (FK to roles.id) instead of the old text `role`.
+|       scholarship_id and group_id are set to NULL because the original
+|       placeholder '-' was never a valid FK value.
+|       The IDs are resolved by subquery on roles.role_name to remain
+|       robust even if the IDs are not 1, 2, 3.
 |--------------------------------------------------------------------------*/
-    $adminpassword = password_hash('admin', PASSWORD_DEFAULT);
-    $userpassword  = password_hash('user', PASSWORD_DEFAULT);
+    $adminpassword    = password_hash('admin',   PASSWORD_DEFAULT);
+    $userpassword     = password_hash('user',    PASSWORD_DEFAULT);
     $teacherpassword  = password_hash('teacher', PASSWORD_DEFAULT);
-    $this->execute("INSERT INTO users (fullname, country, gender, username, email, password, profile, role, user_status, scholarship_name, group_name) 
-    VALUES  ('Waleed Ibrahim','sudan','male','waleed','waleed.it13@gmail.com','$adminpassword','../../assets/images/users/edu.png', 'admin','active','-','-'),
-            ('First User', 'sudan','female','user','user@gmail.com','$userpassword','../../assets/images/users/edu.png','user','blocked','-', '-'),
-            ('First Teacher', 'sudan', 'male','teacher','teacher@gmail.com', '$teacherpassword', '../../assets/images/users/edu.png','teacher','blocked','-','-')
-        ");
+
+    $this->execute("INSERT INTO users 
+        (fullname, country, gender, username, email, password, profile, 
+         role_id, user_status, scholarship_id, group_id) 
+    VALUES  
+        ('Waleed Ibrahim', 'sudan', 'male',   'waleed',  'waleed.it13@gmail.com', '$adminpassword',   '../../assets/images/users/edu.png', 
+         (SELECT id FROM roles WHERE role_name = 'admin' LIMIT 1),   'active',  NULL, NULL),
+        ('First User',     'sudan', 'female', 'user',    'user@gmail.com',        '$userpassword',    '../../assets/images/users/edu.png', 
+         (SELECT id FROM roles WHERE role_name = 'user' LIMIT 1),    'blocked', NULL, NULL),
+        ('First Teacher',  'sudan', 'male',   'teacher', 'teacher@gmail.com',     '$teacherpassword', '../../assets/images/users/edu.png', 
+         (SELECT id FROM roles WHERE role_name = 'teacher' LIMIT 1), 'blocked', NULL, NULL)
+    ");
     }
+
     public function down(){
+        /*--------------------------------------------------------------------------
+        | Drop the users table.
+        | NOTE: Foreign keys are dropped automatically because they belong to
+        |       this table. No need to drop them explicitly.
+        |--------------------------------------------------------------------------*/
         $this->execute("DROP TABLE users");
     }
 }
