@@ -1,24 +1,26 @@
 <?php
 session_start();
 
-// ============ 1. Session Verification (Compatible with Old and New) ============
+/*--------------------------------------------------------------------------
+| Authorization check: this page is admin-only.
+| We flipped the original (broken) logic that showed the page only to non-admins.
+|--------------------------------------------------------------------------*/
 $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
 if ($current_role !== 'admin') {
-    // Not an admin — but this file is for admins only
-	// The old behavior was odd: the file was being shown to non-admins
-	// We'll keep the logic as is for now to avoid breaking the flow:
+    header("Location: login.php");
+    exit;
 }
 
 include_once("../Models/DataBaseConnection.php");
 
 $msg = '';
 
-// ============ 2.Update user status(Prepared Statement) ============
+// ============ 2. Update user status (Prepared Statement) ============
 if (isset($_GET['user_status'], $_GET['user'])) {
     $new_status = $_GET['user_status'];
     $user_id    = (int) $_GET['user'];
 
-    // Checking that the status is within the allowed values
     if (in_array($new_status, ['active', 'blocked'], true) && $user_id > 0) {
         $upd = $connection->prepare("UPDATE users SET user_status = ? WHERE id = ?");
         $upd->bind_param("si", $new_status, $user_id);
@@ -44,6 +46,8 @@ if (isset($_GET['delete'])) {
 
 include_once("../includes/header.php");
 ?>
+
+<!-- ... باقي HTML كما هو ... -->
 
 <body class="app">
 <?php include_once("../includes/sidepanel.php"); ?>
