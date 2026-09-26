@@ -1,6 +1,17 @@
 <?php
-include_once("../includes/log-in-prosses.php");
+/*--------------------------------------------------------------------------
+| Start session FIRST, before any include that may use $_SESSION.
+| Previously, session_start() was called after the include,
+| which is incorrect order and could cause session warnings.
+|--------------------------------------------------------------------------*/
 session_start();
+
+/*--------------------------------------------------------------------------
+| Include the login processing logic.
+| NOTE: log-in-prosses.php also has a session_status() guard,
+|       so calling session_start() twice is safe.
+|--------------------------------------------------------------------------*/
+include_once("../includes/log-in-prosses.php");
 ?>
 <!DOCTYPE html>
 <html lang="en"> 
@@ -35,7 +46,8 @@ session_start();
 		</div>
 		<div class="password mb-3">
 			<input name="password" type="password" class="form-control signin-password" placeholder="Password">
-			<input name="id" type="hidden" class="form-control">
+			<!-- Removed: unused hidden input <input name="id" type="hidden"> 
+			     (no PHP code reads $_POST['id'] during login) -->
 			<div class="extra mt-3 row justify-content-between">
 				<div class="col-6"></div>
 				<div class="col-6">
