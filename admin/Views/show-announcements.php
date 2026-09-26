@@ -1,17 +1,32 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-   include_once("../Models/DataBaseConnection.php");
-    $msg= '';
-    // Delete User 
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../Models/DataBaseConnection.php");
+
+    $msg = '';
+
+    /*--------------------------------------------------------------------------
+    | Delete announcement (Prepared Statement).
+    |--------------------------------------------------------------------------*/
     if (isset($_GET['delete'])) {
-        $stmt = mysqli_query($connection, "DELETE FROM `announcements` WHERE `id` = '$_GET[delete]'");
-        if (isset($stmt)) {
-        $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">Announcement Deleted Successfuly</div>';
+        $del_id = (int) $_GET['delete'];
+        if ($del_id > 0) {
+            $del = $connection->prepare("DELETE FROM announcements WHERE id = ?");
+            $del->bind_param("i", $del_id);
+            if ($del->execute()) {
+                $msg = '<div class="alert alert-success alert-dismissible fade show" role="alert">Announcement Deleted Successfully</div>';
+            }
+            $del->close();
         }
     }
-               
-	include_once("../includes/header.php");
+
+    include_once("../includes/header.php");
 ?>
 
 <body class="app">   	
@@ -46,8 +61,6 @@ if ($_SESSION['role']  !== 'admin') {
 				    </div><!--//col-auto-->
 			    </div><!--//row-->
 
-				
-				
 <div class="tab-content" id="orders-table-tab-content">
 <div class="tab-pane fade show active" id="orders-all" role="tabpanel" aria-labelledby="orders-all-tab">
 <div class="app-card app-card-orders-table shadow-sm mb-5">
@@ -56,72 +69,83 @@ if ($_SESSION['role']  !== 'admin') {
         <table class="table app-table-hover mb-0 text-left">
             <thead>
                 <tr>
-                    <th class="cell" >Order</th>
+                    <th class="cell">Order</th>
                     <th class="cell">Title</th>
                     <th class="cell">Message</th>
                     <th class="cell">Notify time</th>
-                    <th class="cell">Notify Repete</th>
-                    <th class="cell">notif loop</th>
-                    <th class="cell">pulish date</th>
-                    <th class="cell">username</th>
+                    <th class="cell">Notify Repeat</th>
+                    <th class="cell">Notif loop</th>
+                    <th class="cell">Publish date</th>
+                    <th class="cell">Username</th>
                     <th class="cell">Updated at</th>
-                    <th class="cell" >Actions</th>
+                    <th class="cell">Actions</th>
                 </tr>
             </thead>
             <tbody>
 <?php
-        // Pagination
+        /*--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------*/
         $per_page = 5;
-        if (!isset($_GET['page'])) {
-          $page = 1;
-        }else {
-          $page = (int)$_GET['page'];
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $start_from = ($page - 1) * $per_page;
+
+        /*--------------------------------------------------------------------------
+        | Main query: get all announcements.
+        | NOTE: `username` here is a free-text column (not an FK), so no JOIN is
+        |       needed. If you later convert it to user_id, add a JOIN with users.
+        |--------------------------------------------------------------------------*/
+        $announcements = mysqli_query(
+            $connection,
+            "SELECT * FROM `announcements` ORDER BY `id` DESC LIMIT " . (int)$start_from . ", " . (int)$per_page
+        );
+
+        if ($announcements && mysqli_num_rows($announcements) > 0) {
+            while ($show_notifi = mysqli_fetch_assoc($announcements)) {
+                echo '<tr>
+                    <td class="cell">'.(int)$show_notifi['id'].'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['title'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['notif_msg'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['notif_time'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['notif_repeat'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['notif_loop'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['publish_date'] ?? '—').'</td>
+                    <td class="cell">'.htmlspecialchars($show_notifi['username'] ?? '—').'</td>
+                    <td class="cell">'.$show_notifi['updated_at'].'</td>';
+
+                echo '<td class="cell">'
+                    . '<a href="show-announcements.php?delete='.(int)$show_notifi['id'].'&page='.$page.'" class="btn btn-danger btn-sm">delete</a>'
+                    . '</td>';
+
+                echo '</tr>';
+            }
+        } else {
+            /* FIXED: was colspan="13" (table has 10 columns) */
+            echo '<tr><td colspan="10" class="cell">No announcements found.</td></tr>';
         }
-        $start_from = ($page-1) * $per_page;
-        
-        //GET All users with role Teacher
-        $users = mysqli_query($connection, "SELECT * FROM `announcements` ORDER BY `id` DESC LIMIT $start_from , $per_page");
-        $num = 1;
-        if (mysqli_num_rows($users) > 0) {
-        while ($show_notifi = mysqli_fetch_assoc($users)) {
-        echo '<tr>
-            <td class="cell">'.$show_notifi['id'].'</td>
-            <td class="cell">'.$show_notifi['title'].'</td>
-            <td class="cell">'.$show_notifi['notif_msg'].'</td>
-            <td class="cell">'.$show_notifi['notif_time'].'</td>
-            <td class="cell">'.$show_notifi['notif_repeat'].'</td>
-            <td class="cell">'.$show_notifi['notif_loop'].'</td>
-            <td class="cell">'.$show_notifi['publish_date'].'</td>
-            <td class="cell">'.$show_notifi['username'].'</td>
-            <td class="cell">'.$show_notifi['updated_at'].'</td>';
-            echo '<td class="cell"><a href="show-announcements.php?delete='.$show_notifi['id'].'&page='.$page.'" class="btn btn-danger btn-sm">delete</i></a></td>';
-            echo '</tr>';
-            $num++;
-        }
-    } else {
-        echo '<tr><td colspan="13" class="cell">No announcements found.</td></tr>';
-    }
 ?>
-		
     </tbody>
 </table>
 
 </div><!--//table-responsive-->
 </div><!--//app-card-body-->		
 </div><!--//app-card-->
+
 <!--------------------------------------------------
 |   Pagination
+|   NOTE: This file correctly queried announcements (unlike show-depts.php).
 --------------------------------------------------->
 <?php
-    $page_sql = mysqli_query($connection, "SELECT * FROM `announcements`");
-    $count_page = mysqli_num_rows($page_sql);
-    $total_page = ceil($count_page / $per_page);
+    $page_sql = mysqli_query($connection, "SELECT COUNT(*) AS total FROM `announcements`");
+    $count_page = $page_sql ? (int)mysqli_fetch_assoc($page_sql)['total'] : 0;
+    $total_page = (int) ceil($count_page / $per_page);
 ?>
 <nav class="app-pagination">
     <ul class="pagination justify-content-center">
     <?php
         for ($i = 1; $i <= $total_page; $i++) {
-            echo '<li class="page-item" '.($page == $i ? 'class="active"' : '').'><a class="page-link" href="show-announcements.php?page='.$i.'">'.$i.'</a></li>';
+            $active = ($page == $i) ? ' active' : '';
+            echo '<li class="page-item'.$active.'"><a class="page-link" href="show-announcements.php?page='.$i.'">'.$i.'</a></li>';
         }
     ?>
     </ul>
@@ -134,7 +158,8 @@ if ($_SESSION['role']  !== 'admin') {
 </div><!--//app-content-->
 <?php
 	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+} else {
+	header("Location: login.php");
+	exit;
 }
 ?>
