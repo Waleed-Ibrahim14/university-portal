@@ -61,7 +61,7 @@ if ($_SESSION['role']  !== 'admin') {
 							<?php 
 								$stmt = mysqli_query($connection, "SELECT * FROM `roles`");
 								while($role = mysqli_fetch_assoc($stmt)){
-								echo '<option value="'.$role['role_name'].'">'.$role['role_name'].'</option>';
+								echo '<option value="'.$role['id'].'">'.$role['role_name'].'</option>';
 								}
 							?>
 						</select>
