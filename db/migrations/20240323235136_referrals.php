@@ -9,10 +9,12 @@ final class Referrals extends AbstractMigration{
     public function up(){
         $this->execute("CREATE TABLE referrals (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                student_id INT,
+                student_id INT NULL,
                 referral_reason TEXT NOT NULL,
                 date DATE NOT NULL,
-                FOREIGN KEY (student_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES users(id) 
+                    ON UPDATE CASCADE 
+                    ON DELETE SET NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
         "); 
@@ -21,7 +23,7 @@ final class Referrals extends AbstractMigration{
          /*--------------------------------------------------------------------------
         | Drop the referrals table.
         | NOTE: Foreign keys are dropped automatically because they belong to
-        |       this table. No need to drop them explicitly.
+        | this table. No need to drop them explicitly.
         |--------------------------------------------------------------------------*/
         $this->execute("DROP TABLE referrals");
     }
