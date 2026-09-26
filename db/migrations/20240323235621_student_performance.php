@@ -19,7 +19,7 @@ final class StudentPerformance extends AbstractMigration{
     }
     public function down(){
          /*--------------------------------------------------------------------------
-        | Drop the users table.
+        | Drop the student_performance table.
         | NOTE: Foreign keys are dropped automatically because they belong to
         |       this table. No need to drop them explicitly.
         |--------------------------------------------------------------------------*/
