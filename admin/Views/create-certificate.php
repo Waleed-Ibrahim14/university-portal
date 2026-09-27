@@ -1,7 +1,13 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-	include_once("../includes/header.php");
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../includes/header.php");
     include_once("../includes/create-certificate-prosses.php");
 ?>
 <body class="app"> 
@@ -19,35 +25,49 @@ if ($_SESSION['role']  !== 'admin') {
 <div class="d-flex flex-column align-content-end">
 <div class="app-auth-body mx-auto ">	
 <div class="auth-form-container text-start ">
-<?php 	echo $msg;  ?>
+<?php echo $msg; ?>
         <form action="" method="post" enctype="multipart/form-data">         		
             <div class="row">
             <div class="mb-3 col-6">
-            <select name="student_id"  class="form-control signup-password">
-                <option value="">select user</option>
+            <select name="student_id" class="form-control" required>
+                <option value="">-- Select Student --</option>
                 <?php 
-                    $stmt = mysqli_query($connection, "SELECT * FROM `users` WHERE `role` = 'user'");
-                    while($studentId = mysqli_fetch_assoc($stmt)){
-                    echo '<option value="'.$studentId['id'].'">'.$studentId['username'].'</option>';
+                    $students = mysqli_query(
+                        $connection,
+                        "SELECT u.id, u.username, u.fullname
+                         FROM users u
+                         LEFT JOIN roles r ON u.role_id = r.id
+                         WHERE r.role_name = 'user'
+                         ORDER BY u.username ASC"
+                    );
+                    while ($student = mysqli_fetch_assoc($students)) {
+                        echo '<option value="'.(int)$student['id'].'">'
+                           . htmlspecialchars($student['username'])
+                           . '</option>';
                     }
                 ?>
             </select>
             </div>
             <div class="mb-3 col-6">
-				<input  name="certificate_name" type="text" class="form-control " placeholder="certificate name">
+				<input name="certificate_name" type="text" class="form-control" placeholder="Certificate name" required>
 			</div>
 			</div>
             <div class="row">
 			<div class="mb-3 col-6">
-				<input name="issue_date" type="date" class="form-control ">
+				<input name="issue_date" type="date" class="form-control" required>
 			</div>
             <div class="mb-3 col-6">
-            <select name="course_name"  class="form-control">
-                <option value="">select course name</option>
+            <select name="course_id" class="form-control" required>
+                <option value="">-- Select Course --</option>
                 <?php 
-                    $stmt = mysqli_query($connection, "SELECT `course_name` FROM `courses`");
-                        while($teacherId = mysqli_fetch_assoc($stmt)){
-                        echo '<option value="'.$teacherId['course_name'].'">'.$teacherId['course_name'].'</option>';
+                    $courses = mysqli_query(
+                        $connection,
+                        "SELECT id, course_name FROM courses ORDER BY course_name ASC"
+                    );
+                    while ($course = mysqli_fetch_assoc($courses)) {
+                        echo '<option value="'.(int)$course['id'].'">'
+                           . htmlspecialchars($course['course_name'])
+                           . '</option>';
                     }
                 ?>
             </select>
@@ -55,29 +75,39 @@ if ($_SESSION['role']  !== 'admin') {
             </div>
             <div class="row">
             <div class="mb-3">
-            <select name="teacher_name"  class="form-control">
-                <option value="">select teacher</option>
+            <select name="teacher_id" class="form-control" required>
+                <option value="">-- Select Teacher --</option>
                 <?php 
-                    $stmt = mysqli_query($connection, "SELECT * FROM `users` WHERE `role` = 'teacher'");
-                        while($teacherId = mysqli_fetch_assoc($stmt)){
-                        echo '<option value="'.$teacherId['id'].'">'.$teacherId['username'].'</option>';
+                    $teachers = mysqli_query(
+                        $connection,
+                        "SELECT u.id, u.username, u.fullname
+                         FROM users u
+                         LEFT JOIN roles r ON u.role_id = r.id
+                         WHERE r.role_name = 'teacher'
+                         ORDER BY u.username ASC"
+                    );
+                    while ($teacher = mysqli_fetch_assoc($teachers)) {
+                        echo '<option value="'.(int)$teacher['id'].'">'
+                           . htmlspecialchars($teacher['username'])
+                           . '</option>';
                     }
                 ?>
             </select>
             </div>
 			<div class="mb-3">
-				<input name="certificate_file" type="file" class="form-control">
+				<input name="certificate_file" type="file" accept=".pdf" class="form-control" required>
 			</div>
 			</div>
 			<div class="mb-3">
-				<button type="submit" name="create_certificate" class="btn app-btn-primary w-100 theme-btn mx-auto">Sign Up</button>
+				<button type="submit" name="create_certificate" class="btn app-btn-primary w-100 theme-btn mx-auto">Create Certificate</button>
 			</div>
 		</form>
 </div>
 </div>
 <?php
 	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+} else {
+	header("Location: login.php");
+	exit;
 }
 ?>
