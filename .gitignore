@@ -1,2 +1,27 @@
 .DS_Store
 config.codekit3
+# Dependencies
+/vendor/
+
+# PHPUnit cache
+.phpunit.cache/
+phpunit.xml.bak
+
+# Database dumps
+*.sql
+*.sqlite
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

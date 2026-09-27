@@ -6,15 +6,15 @@ session_start();
 |--------------------------------------------------------------------------*/
 $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
 
-if ($current_role !== 'admin') {
-    include_once("../includes/header.php");
+if ($current_role === 'admin') {
+    include_once(__DIR__ . "/../includes/header.php");
     /*--------------------------------------------------------------------------
     | FIXED: corrected filename (was "create-sholarship-prosses.php")
     |--------------------------------------------------------------------------*/
-    include_once("../includes/create-scholarships-prosses.php");
+    include_once(__DIR__ . "/../includes/create-scholarships-prosses.php");
 ?>
 <body class="app"> 
-	<?php include_once("../includes/sidepanel.php"); ?>  	
+	<?php include_once(__DIR__ . "/../includes/sidepanel.php"); ?>  	
 <div class="app-wrapper">
 <div class="app-content pt-3 p-md-3 p-lg-5">
 <div class="container-xl">
@@ -109,7 +109,7 @@ if ($current_role !== 'admin') {
 <script src="../assets/plugins/tinymce/tinymce.min.js"></script>
 <script src="../assets/plugins/tinymce/init-tinymce.js"></script>
 <?php
-	include_once("../includes/footer.php");	
+	include_once(__DIR__ . "/../includes/footer.php");	
 } else {
     header("Location: login.php");
     exit;

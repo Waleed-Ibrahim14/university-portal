@@ -7,10 +7,8 @@ session_start();
 |--------------------------------------------------------------------------*/
 $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
 
-if ($current_role !== 'admin') {
-    header("Location: login.php");
-    exit;
-}
+if ($current_role === 'admin') {
+
 
 include_once("../Models/DataBaseConnection.php");
 
@@ -208,4 +206,7 @@ include_once("../includes/header.php");
 
 <?php
     include_once("../includes/footer.php");
+    } else {
+    header("Location:login.php");
+}
 ?>

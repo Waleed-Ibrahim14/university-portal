@@ -12,7 +12,7 @@ $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
 | NOTE: The original logic (show page if NOT admin) is preserved here.
 | If the page is meant to be "admins only", flip this condition.
 |--------------------------------------------------------------------------*/
-if ($current_role !== 'admin') {
+if ($current_role === 'admin') {
     include_once("../Models/DataBaseConnection.php");
 
     $msg = '';

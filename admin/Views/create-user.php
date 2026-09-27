@@ -10,7 +10,7 @@ session_start();
 |--------------------------------------------------------------------------*/
 $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
 
-if ($current_role !== 'admin') {
+if ($current_role === 'admin') {
     include_once("../includes/header.php");
     include_once("../includes/notification/Push.php");
     include_once("../includes/create-user-prosses.php");

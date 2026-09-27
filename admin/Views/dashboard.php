@@ -15,9 +15,9 @@ if (empty($_SESSION['id'])) {
 
 // Optional (stricter): uncomment to allow admins only
 // $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
-// if ($current_role !== 'admin') { header("Location: login.php"); exit; }
+// if ($current_role === 'admin') { header("Location: login.php"); exit; }
 
-include_once("../Models/DataBaseConnection.php");
+include_once(__DIR__ . "/../Models/DataBaseConnection.php");
 
 /*--------------------------------------------------------------------------
 | Load the currently logged-in user (prepared statement + JOIN with roles).
@@ -68,7 +68,7 @@ if ($stmt !== false) {
 
 // Count all users
 $usersResult      = mysqli_query($connection, "SELECT COUNT(*) AS total FROM users");
-usersCount           = $usersResult ? (int)mysqli_fetch_assoc($usersResult)['total'] : 0;
+$usersCount           = $usersResult ? (int)mysqli_fetch_assoc($usersResult)['total'] : 0;
 
 // Count scholarships
 $scholarships     = mysqli_query($connection, "SELECT COUNT(*) AS total FROM scholarships");

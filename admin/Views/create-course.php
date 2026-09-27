@@ -6,7 +6,7 @@ session_start();
 |--------------------------------------------------------------------------*/
 $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
 
-if ($current_role !== 'admin') {
+if ($current_role === 'admin') {
     /*--------------------------------------------------------------------------
     | Include DB connection BEFORE the form, so $connection is available below.
     | Also include the process file (handles POST submission).

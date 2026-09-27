@@ -9,8 +9,8 @@ session_start();
 |--------------------------------------------------------------------------*/
 $current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
 
-if ($current_role !== 'admin') {
-    include_once("../includes/header.php");
+if ($current_role === 'admin') {
+    include_once(__DIR__ . "/../includes/header.php");
     include_once(__DIR__ . "/../Models/DataBaseConnection.php");
     /*--------------------------------------------------------------------------
     | FIXED: corrected filename (was create-dept-prosses.php — missing 's')
@@ -18,7 +18,7 @@ if ($current_role !== 'admin') {
     include_once("../includes/create-depts-prosses.php");
 ?>
 <body class="app"> 
-	<?php include_once("../includes/sidepanel.php"); ?>  	
+	<?php include_once(__DIR__ . "/../includes/sidepanel.php"); ?>  	
 	<div class="app-wrapper">
 		<div class="app-content pt-3 p-md-3 p-lg-5">
 			<div class="container-xl">

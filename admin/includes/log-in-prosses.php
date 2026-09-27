@@ -2,7 +2,7 @@
 /*--------------------------------------------------------------------------
 | Log-in Process ::
 |--------------------------------------------------------------------------*/
-include_once("../Models/DataBaseConnection.php");
+include_once(__DIR__ . "/../Models/DataBaseConnection.php");
 
 // Start session if not already started (safe guard against duplicate session_start calls)
 if (session_status() === PHP_SESSION_NONE) {
@@ -91,7 +91,7 @@ if (isset($_POST['login'])) {
                     $msg = '<div class="alert alert-success" role="alert">'
                          . htmlspecialchars($_SESSION['username'])
                          . ' Logged in Successfully</div>'
-                         . '<meta http-equiv="refresh" content="3; \'dashboard.php\'" />';
+                         . '<meta http-equiv="refresh" content="3; \'Views/dashboard.php\'" />';
 
                 } else {
                     $msg = '<div class="alert alert-danger" role="alert">Your account is blocked. Please contact support.</div>';
