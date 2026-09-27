@@ -14,8 +14,7 @@ if ($current_role !== 'admin') {
 
     /*--------------------------------------------------------------------------
     | Update user status (Prepared Statement).
-    | NOTE: This block is inherited from show-users.php but has no UI trigger
-    |       on this page — kept for parity, secured here.
+    | NOTE: Inherited from show-users.php; no UI trigger on this page.
     |--------------------------------------------------------------------------*/
     if (isset($_GET['user_status'], $_GET['user'])) {
         $new_status = $_GET['user_status'];
@@ -89,23 +88,35 @@ if ($current_role !== 'admin') {
     $start_from = ($page - 1) * $per_page;
 
     /*--------------------------------------------------------------------------
-    | GET All Certificates
-    | NOTE: The original code reused variable names ($users, $show_user) from
-    |       show-users.php — we keep them for minimal diff, but the comments
-    |       clarify the meaning.
+    | Main query: certificates + student name + teacher name + course name.
+    |
+    | Uses 3 LEFT JOINs:
+    |   - u_student ON c.student_id = u_student.id
+    |   - u_teacher ON c.teacher_id = u_teacher.id
+    |   - co        ON c.course_id  = co.id
     |--------------------------------------------------------------------------*/
-    $users = mysqli_query($connection, "SELECT * FROM `certificates` ORDER BY `id` DESC LIMIT " . (int)$start_from . ", " . (int)$per_page);
+    $sql = "SELECT 
+                c.*,
+                u_student.username  AS student_username,
+                u_teacher.username  AS teacher_username,
+                co.course_name      AS course_name
+            FROM certificates c
+            LEFT JOIN users u_student   ON c.student_id = u_student.id
+            LEFT JOIN users u_teacher   ON c.teacher_id = u_teacher.id
+            LEFT JOIN courses co        ON c.course_id  = co.id
+            ORDER BY c.id DESC
+            LIMIT " . (int)$start_from . ", " . (int)$per_page;
+
+    $users = mysqli_query($connection, $sql);
 
     if ($users && mysqli_num_rows($users) > 0) {
         while ($show_user = mysqli_fetch_assoc($users)) {
             $certificate_file = $show_user['certificate_file'];
             $temp_pdf_path    = "../../assets/images/certificates/" . basename($certificate_file);
-            $temp_pdf_path    = "../../assets/images/certificates/$certificate_file";
 
-            // File type and size
+            // File type and size (safe: check existence first)
             $imageFileType = strtolower(pathinfo($temp_pdf_path, PATHINFO_EXTENSION));
-            file_put_contents($temp_pdf_path, $certificate_file);
-            $filesize = filesize($temp_pdf_path);
+            $filesize = file_exists($temp_pdf_path) ? filesize($temp_pdf_path) : 0;
 
             echo '
             <div class="col-6 col-md-4 col-xl-3 col-xxl-2">
@@ -122,7 +133,11 @@ if ($current_role !== 'admin') {
                         <div class="app-doc-meta">
                             <ul class="list-unstyled mb-0">
                                 <li><span class="text-muted">Type:</span> '.htmlspecialchars($imageFileType).'</li>
-                                <li><span class="text-muted">Size:</span> '.$filesize.'</li>
+                                <li><span class="text-muted">Size:</span> '.number_format($filesize / 1024, 1).' KB</li>
+                                <li><span class="text-muted">Student:</span> '.htmlspecialchars($show_user['student_username'] ?? '—').'</li>
+                                <li><span class="text-muted">Teacher:</span> '.htmlspecialchars($show_user['teacher_username'] ?? '—').'</li>
+                                <li><span class="text-muted">Course:</span> '.htmlspecialchars($show_user['course_name'] ?? '—').'</li>
+                                <li><span class="text-muted">Issue Date:</span> '.htmlspecialchars($show_user['issue_date'] ?? '—').'</li>
                                 <li><span class="text-muted">Created: </span>'.$show_user['created_at'].'</li>
                             </ul>
                         </div>
@@ -136,12 +151,12 @@ if ($current_role !== 'admin') {
                                 </div>
                         <ul class="dropdown-menu">
                         
-                        <li><a class="dropdown-item" href="update-certificate.php?certificateId='.$show_user['id'].'"><svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pencil me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <li><a class="dropdown-item" href="update-certificate.php?certificateId='.(int)$show_user['id'].'"><svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pencil me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175l-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
                         </svg>Edit</a></li>
                         <li><hr class="dropdown-divider"></li>
 
-                        <li><a class="dropdown-item" href="show-certificates.php?delete='.$show_user['id'].'&page='.$page.'">
+                        <li><a class="dropdown-item" href="show-certificates.php?delete='.(int)$show_user['id'].'&page='.$page.'">
                         <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash me-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
                         <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
@@ -187,7 +202,7 @@ if ($current_role !== 'admin') {
 <?php
 	include_once("../includes/footer.php");	
 } else {
-	header("Location: login.php");
-	exit;
+    header("Location: login.php");
+    exit;
 }
 ?>
