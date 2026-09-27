@@ -9,8 +9,11 @@ final class Certificates extends AbstractMigration{
 | CHANGES:
 |   - `teacher_name VARCHAR(50)` replaced by `teacher_id INT FK → users.id`
 |   - Added `course_id INT FK → courses.id`
-|   - All FKs now use ON DELETE SET NULL (was CASCADE for student_id)
-|     to preserve historical certificate records when users/courses are removed
+|   - All FKs use ON DELETE SET NULL to preserve historical records:
+|       * student_id: a certificate is a historical document (graduation proof)
+|       * teacher_id: the certificate was issued by this teacher
+|       * course_id:  the certificate is for this course
+|     Deleting a user or course should NEVER silently erase a certificate.
 |--------------------------------------------------------------------------*/
     public function up(){
         $this->execute("CREATE TABLE certificates (
@@ -21,11 +24,11 @@ final class Certificates extends AbstractMigration{
                 teacher_id INT NULL,
                 course_id INT NULL,
                 certificate_file TEXT NOT NULL,
-                FOREIGN KEY (student_id) REFERENCES users(id) 
+                FOREIGN KEY (student_id) REFERENCES users(id)
                     ON UPDATE CASCADE ON DELETE SET NULL,
-                FOREIGN KEY (teacher_id) REFERENCES users(id) 
+                FOREIGN KEY (teacher_id) REFERENCES users(id)
                     ON UPDATE CASCADE ON DELETE SET NULL,
-                FOREIGN KEY (course_id) REFERENCES courses(id) 
+                FOREIGN KEY (course_id) REFERENCES courses(id)
                     ON UPDATE CASCADE ON DELETE SET NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
