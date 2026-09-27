@@ -1,10 +1,18 @@
 <?php 
-include_once("../includes/password-reset-prosses.php");
+/*--------------------------------------------------------------------------
+| Start session FIRST (before including the process file).
+|--------------------------------------------------------------------------*/
+session_start();
+
+/*--------------------------------------------------------------------------
+| Include password reset process (handles POST + validation).
+|--------------------------------------------------------------------------*/
+include_once(__DIR__ . "/../includes/password-reset-prosses.php");
 ?>
 <!DOCTYPE html>
 <html lang="en"> 
 <head>
-    <title>reset password</title>
+    <title>Reset Password | University Portal</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,22 +27,27 @@ include_once("../includes/password-reset-prosses.php");
 	    <div class="col-12 col-md-12 col-lg-12 auth-main-col text-center p-5">
 		    <div class="d-flex flex-column align-content-end">
 			    <div class="app-auth-body mx-auto">	
-				    <div class="app-auth-branding mb-4"><a class="app-logo" href="index.html"><img class="logo-icon me-2" src="../assets/images/logo.png" alt="logo"></a></div>
+				    <div class="app-auth-branding mb-4">
+                        <!-- FIXED: was index.html (broken link) -->
+                        <a class="app-logo" href="index.php">
+                            <img class="logo-icon me-2" src="../assets/images/logo.png" alt="logo">
+                        </a>
+                    </div>
 					<h2 class="auth-heading text-center mb-4">Change Your Password</h2>
 					<div class="auth-form-container text-left">
-					<?php 	echo $msg;	?><!-- Validation Form Message -->
+					<?php if (!empty($msg)) { echo $msg; } ?>
 <!--------------------------------------------------------------------------
-| Password Reset Form::
+| Password Reset Form ::
 |-------------------------------------------------------------------------->
-						<form action="password-reset-form.php" method="post" class="auth-form resetpass-form">                
+						<form action="" method="post" class="auth-form resetpass-form">
 							<div class="email mb-3">
-								<input name="email" type="email" class="form-control login-email" placeholder="Your Email">
+								<input name="email" type="email" class="form-control login-email" placeholder="Your Email" required>
 							</div>
 							<div class="email mb-3">
-								<input  name="oldPassword" type="password" class="form-control login-email" placeholder="Your Old Password">
+								<input name="oldPassword" type="password" class="form-control login-email" placeholder="Your Old Password" required>
 							</div>
 							<div class="email mb-3">
-								<input  name="password" type="password" class="form-control login-email" placeholder="New Password">
+								<input name="password" type="password" class="form-control login-email" placeholder="New Password" required>
 							</div>
 							<div class="text-center">
 								<button type="submit" name="reset-password" class="btn app-btn-primary btn-block theme-btn mx-auto">Change Password</button>
@@ -43,7 +56,7 @@ include_once("../includes/password-reset-prosses.php");
 					</div><!--//auth-form-container-->
 </div><!--//auth-body-->
 
-<?php	include_once("../includes/footer.php");	?>	    
+<?php include_once(__DIR__ . "/../includes/footer.php"); ?>	    
 					
 		</div><!--//flex-column-->   
 	</div><!--//auth-main-col-->
