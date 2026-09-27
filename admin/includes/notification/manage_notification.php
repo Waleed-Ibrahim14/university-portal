@@ -1,12 +1,12 @@
-<?php 
-SESSION_START(); 
-include ('Push.php');  
+<?php
+session_start();
+include_once(__DIR__ . '/Push.php');
 $push = new Push();
 ?>
 <div class="container">		
 	<div class="row">
 		<div class="col-sm-6">
-			<form method="post"  action="<?php echo $_SERVER['PHP_SELF']; ?>">										
+			<form method="post" action="">
 				<table class="table borderless">
 					<tr>
 						<td>Title</td>
@@ -16,68 +16,77 @@ $push = new Push();
 						<td>Message</td>
 						<td><textarea name="msg" cols="50" rows="4" class="form-control" required></textarea></td>
 					</tr>			
-					<tr><td>Broadcast time</td>
-						<td><select name="time" class="form-control"><option>Now</option></select> </td>
+					<tr>
+						<td>Broadcast time</td>
+						<td><select name="time" class="form-control"><option>Now</option></select></td>
 					</tr>
-					<tr><td>Loop (time)</td>
-						<td><select name="loops" class="form-control">
-						<?php 
-							for ($i=1; $i<=5 ; $i++) { ?>
-								<option value="<?php echo $i ?>"><?php echo $i ?></option>
-						<?php } ?>
-						</select></td>
+					<tr>
+						<td>Loop (time)</td>
+						<td>
+							<select name="loops" class="form-control">
+								<?php for ($i = 1; $i <= 5; $i++): ?>
+									<option value="<?= $i ?>"><?= $i ?></option>
+								<?php endfor; ?>
+							</select>
+						</td>
 					</tr>
-					<tr><td>Loop Every (Minute)</td>
-						<td><select name="loop_every" class="form-control">
-						<?php 
-						for ($i=1; $i<=60 ; $i++) { ?>
-							<option value="<?php echo $i ?>"><?php echo $i ?></option>
-						<?php } ?>
-						</select> </td>
+					<tr>
+						<td>Loop Every (Minute)</td>
+						<td>
+							<select name="loop_every" class="form-control">
+								<?php for ($i = 1; $i <= 60; $i++): ?>
+									<option value="<?= $i ?>"><?= $i ?></option>
+								<?php endfor; ?>
+							</select>
+						</td>
 					</tr>
 					<tr>
 						<td>For</td>
-						<td><select name="user" class="form-control">
-						<?php 		
-							$user = $push->listUsers(); 
-							foreach ($user as $key) {
-						?>
-							<option value="<?php echo $key['username'] ?>"><?php echo $key['username'] ?></option>
-						<?php } ?>
-						</select></td>
+						<td>
+							<select name="user" class="form-control" required>
+								<option value="">-- Select --</option>
+								<?php 
+								$users = $push->listUsers();
+								foreach ($users as $key) {
+									echo '<option value="' . htmlspecialchars($key['username']) . '">'
+									   . htmlspecialchars($key['username']) . '</option>';
+								}
+								?>
+							</select>
+						</td>
 					</tr>
 					<tr>
-						<td colspan=1></td>
-						<td colspan=1></td>
-					</tr>					
-					<tr>
-						<td colspan=1></td>
-						<td><button name="submit" type="submit" class="btn btn-info">Add Message</button></td>
+						<td colspan="2">
+							<button name="submit" type="submit" class="btn btn-info">Add Message</button>
+						</td>
 					</tr>
 				</table>
 			</form>
 		</div>
 	</div>
+
 	<?php 
-	if (isset($_POST['submit'])) { 
-		if(isset($_POST['msg']) and isset($_POST['time']) and isset($_POST['loops']) and isset($_POST['loop_every']) and isset($_POST['user'])) {
-			$title = $_POST['title'];	
-			$msg = $_POST['msg']; 
-			$time = date('Y-m-d H:i:s'); 
-			$loop= $_POST['loops']; 
-			$loop_every=$_POST['loop_every']; 
-			$user = $_POST['user']; 
-			$isSaved = $push->saveNotification($title, $msg,$time,$loop,$loop_every,$user);
-			if($isSaved) {
-				echo '* save new notification success';
-			} else {
-				echo 'error save data';
-			}
+	if (isset($_POST['submit'])) {
+		$title      = trim($_POST['title'] ?? '');
+		$msg        = trim($_POST['msg'] ?? '');
+		$loop       = (int) ($_POST['loops'] ?? 0);
+		$loop_every = (int) ($_POST['loop_every'] ?? 0);
+		$user       = trim($_POST['user'] ?? '');
+		$time       = date('Y-m-d H:i:s');
+
+		if (empty($title) || empty($msg) || empty($loop) || empty($loop_every) || empty($user)) {
+			echo '<div class="alert alert-danger">Please complete all fields</div>';
 		} else {
-			echo '* completed the parameter above';
+			$isSaved = $push->saveNotification($title, $msg, $time, $loop, $loop_every, $user);
+			if ($isSaved === true) {
+				echo '<div class="alert alert-success">New notification saved</div>';
+			} else {
+				echo '<div class="alert alert-danger">Error: ' . htmlspecialchars($isSaved) . '</div>';
+			}
 		}
-	} 
+	}
 	?>
+
 	<h3>Notifications List:</h3>
 	<table class="table">
 		<thead>
@@ -91,20 +100,21 @@ $push = new Push();
 			</tr>
 		</thead>
 		<tbody>
-			<?php $a =1; 
-			$notifList = $push->listNotification(); 
-			foreach ($notifList as $key) {
+			<?php 
+			$a = 1;
+			$notifList = $push->listNotification();
+			foreach ($notifList as $key):
 			?>
 			<tr>
-				<td><?php echo $a ?></td>
-				<td><?php echo $key['notif_time'] ?></td>
-				<td><?php echo $key['title'] ?></td>
-				<td><?php echo $key['notif_msg'] ?></td>
-				<td><?php echo $key['notif_loop']; ?></td>
-				<td><?php echo $key['username'] ?></td>
+				<td><?= $a++ ?></td>
+				<td><?= htmlspecialchars($key['notif_time']) ?></td>
+				<td><?= htmlspecialchars($key['title']) ?></td>
+				<td><?= htmlspecialchars($key['notif_msg']) ?></td>
+				<td><?= (int)$key['notif_loop'] ?></td>
+				<td><?= htmlspecialchars($key['username']) ?></td>
 			</tr>
-			<?php $a++; } ?>
+			<?php endforeach; ?>
 		</tbody>
 	</table>
-</div>	
-<?php include('inc/footer.php');?>
+</div>
+<?php include_once(__DIR__ . '/../footer.php'); ?>
