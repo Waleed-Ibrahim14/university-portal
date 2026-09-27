@@ -1,202 +1,117 @@
 <?php
-	include_once("../includes/header.php");
-	session_start();
-if ($_SESSION['role']  !== 'admin') { 
+session_start();
+
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    include_once("../includes/header.php");
+    include_once(__DIR__ . "/../Models/DataBaseConnection.php");
+    
+    $msg = '';
+    
+    // Delete notification
+    if (isset($_GET['delete'])) {
+        $del_id = (int) $_GET['delete'];
+        if ($del_id > 0) {
+            $del = $connection->prepare("DELETE FROM announcements WHERE id = ?");
+            $del->bind_param("i", $del_id);
+            if ($del->execute()) {
+                $msg = '<div class="alert alert-success">Notification deleted</div>';
+            }
+            $del->close();
+        }
+    }
 ?>
 
 <body class="app">   	
 <?php include_once("../includes/sidepanel.php"); ?>
     
     <div class="app-wrapper">
-	    
 	    <div class="app-content pt-3 p-md-3 p-lg-4">
 		    <div class="container-xl">
-			    <div class="position-relative mb-3">
-				    <div class="row g-3 justify-content-between">
-					    <div class="col-auto">
-					        <h1 class="app-page-title mb-0">Notifications</h1>
-					    </div>
-					    <div class="col-auto">
-					        <div class="page-utilities">
-							    <select class="form-select form-select-sm w-auto" >
-								  <option selected value="option-1">All</option>
-								  <option value="option-2">News</option>
-								  <option value="option-3">Product</option>
-								  <option value="option-4">Project</option>
-								  <option value="option-4">Billing</option>
-								</select>
-					        </div><!--//page-utilities-->
-					    </div>
-				    </div>
-			    </div>
-			    
+			    <h1 class="app-page-title mb-3">Notifications</h1>
+                <?php echo $msg; ?>
+                
+                <?php
+                // Pagination
+                $per_page = 5;
+                $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+                $start_from = ($page - 1) * $per_page;
+                
+                $query = mysqli_query(
+                    $connection,
+                    "SELECT * FROM announcements ORDER BY id DESC LIMIT " . (int)$start_from . ", " . (int)$per_page
+                );
+                
+                if ($query && mysqli_num_rows($query) > 0) {
+                    while ($notif = mysqli_fetch_assoc($query)) {
+                        $badge_class = 'bg-info';
+                        // Simple heuristic based on notif_loop
+                        if ($notif['notif_loop'] > 3) $badge_class = 'bg-warning';
+                        elseif ($notif['notif_loop'] > 0) $badge_class = 'bg-success';
+                ?>
+                
                 <div class="app-card app-card-notification shadow-sm mb-4">
-				    <div class="app-card-header px-4 py-3">
-				        <div class="row g-3 align-items-center">
-					        <div class="col-12 col-lg-auto text-center text-lg-start">						        
-				                <img class="profile-image" src="assets/images/profiles/profile-1.png" alt="">
-					        </div><!--//col-->
-					        <div class="col-12 col-lg-auto text-center text-lg-start">
-						        <div class="notification-type mb-2"><span class="badge bg-info">Project</span></div>
-						        <h4 class="notification-title mb-1">Notification Heading Lorem Ipsum</h4>
-						        
-						        <ul class="notification-meta list-inline mb-0">
-							        <li class="list-inline-item">2 hrs ago</li>
-							        <li class="list-inline-item">|</li>
-							        <li class="list-inline-item">Amy Doe</li>
-						        </ul>
-						   
-					        </div><!--//col-->
-				        </div><!--//row-->
-				    </div><!--//app-card-header-->
-				    <div class="app-card-body p-4">
-					    <div class="notification-content">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sed ultrices dolor, ac maximus ligula. Donec ex orci, mollis ac purus vel, tempor pulvinar justo. Praesent nibh massa, posuere non mollis vel, molestie non mauris. Aenean consequat facilisis orci, sed sagittis mauris interdum at.</div>
-				    </div><!--//app-card-body-->
-				    <div class="app-card-footer px-4 py-3">
-					    <a class="action-link" href="#">View all<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right ms-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-</svg></a>
-				    </div><!--//app-card-footer-->
-				</div><!--//app-card-->
-				
-				<div class="app-card app-card-notification shadow-sm mb-4">
-				    <div class="app-card-header px-4 py-3">
-				        <div class="row g-3 align-items-center">
-					        <div class="col-12 col-lg-auto text-center text-lg-start">						        
-				                <div class="app-icon-holder">
-									<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-receipt" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-	  <path fill-rule="evenodd" d="M1.92.506a.5.5 0 0 1 .434.14L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27zm.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.509.509.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0l-.509-.51z"/>
-	  <path fill-rule="evenodd" d="M3 4.5a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm8-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5z"/>
-	</svg>
-								</div><!--//app-icon-holder-->
-					        </div><!--//col-->
-					        <div class="col-12 col-lg-auto text-center text-lg-start">
-						        <div class="notification-type mb-2"><span class="badge bg-warning">Billing</span></div>
-						        <h4 class="notification-title mb-1">Notification Heading Lorem Ipsum</h4>
-						        
-						        <ul class="notification-meta list-inline mb-0">
-							        <li class="list-inline-item">1 day ago</li>
-							        <li class="list-inline-item">|</li>
-							        <li class="list-inline-item">System</li>
-						        </ul>
-						   
-					        </div><!--//col-->
-				        </div><!--//row-->
-				    </div><!--//app-card-header-->
-				    <div class="app-card-body p-4">
-					    <div class="notification-content">Praesent nibh massa, posuere non mollis vel, molestie non mauris. Aenean consequat facilisis orci, sed sagittis mauris interdum at.</div>
-				    </div><!--//app-card-body-->
-				    <div class="app-card-footer px-4 py-3">
-					    <a class="action-link" href="#">View invoice<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right ms-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-</svg></a>
-				    </div><!--//app-card-footer-->
-				</div><!--//app-card-->
-				
-				<div class="app-card app-card-notification shadow-sm mb-4">
-				    <div class="app-card-header px-4 py-3">
-				        <div class="row g-3 align-items-center">
-					        <div class="col-12 col-lg-auto text-center text-lg-start">						        
-				                <div class="app-icon-holder icon-holder-mono">
-										<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-bar-chart-line" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <path fill-rule="evenodd" d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2zm1 12h2V2h-2v12zm-3 0V7H7v7h2zm-5 0v-3H2v3h2z"/>
-</svg>
-								</div><!--//app-icon-holder-->
-					        </div><!--//col-->
-					        <div class="col-12 col-lg-auto text-center text-lg-start">
-						        <div class="notification-type mb-2"><span class="badge bg-info">Project</span></div>
-						        <h4 class="notification-title mb-1">Notification Heading Lorem Ipsum</h4>
-						        
-						        <ul class="notification-meta list-inline mb-0">
-							        <li class="list-inline-item">3 days ago</li>
-							        <li class="list-inline-item">|</li>
-							        <li class="list-inline-item">System</li>
-						        </ul>
-						   
-					        </div><!--//col-->
-				        </div><!--//row-->
-				    </div><!--//app-card-header-->
-				    <div class="app-card-body p-4">
-					    <div class="notification-content">Proin a magna sit amet mauris mollis mattis in at dui. Fusce laoreet metus et nunc lobortis, suscipit sollicitudin augue pellentesque. Maecenas maximus iaculis scelerisque.</div>
-				    </div><!--//app-card-body-->
-				    <div class="app-card-footer px-4 py-3">
-					    <a class="action-link" href="#">View invoice<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right ms-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-</svg></a>
-				    </div><!--//app-card-footer-->
-				</div><!--//app-card-->
-
-				<div class="app-card app-card-notification shadow-sm mb-4">
-				    <div class="app-card-header px-4 py-3">
-				        <div class="row g-3 align-items-center">
-					        <div class="col-12 col-lg-auto text-center text-lg-start">						        
-				                <img class="profile-image" src="assets/images/profiles/profile-2.png" alt="">
-					        </div><!--//col-->
-					        <div class="col-12 col-lg-auto text-center text-lg-start">
-						        <div class="notification-type mb-2"><span class="badge bg-secondary">Product</span></div>
-						        <h4 class="notification-title mb-1">Notification Heading Lorem Ipsum</h4>
-						        
-						        <ul class="notification-meta list-inline mb-0">
-							        <li class="list-inline-item">7 days ago</li>
-							        <li class="list-inline-item">|</li>
-							        <li class="list-inline-item">James Smith</li>
-						        </ul>
-						   
-					        </div><!--//col-->
-				        </div><!--//row-->
-				    </div><!--//app-card-header-->
-				    <div class="app-card-body p-4">
-					    <div class="notification-content">Sed tempor faucibus arcu, nec tristique erat congue sed. Pellentesque auctor ut elit vel feugiat. Sed a mauris tempor, tempor lacus vel, tristique metus. Nulla interdum felis id metus fermentum laoreet.</div>
-				    </div><!--//app-card-body-->
-				    <div class="app-card-footer px-4 py-3">
-					    <a class="action-link" href="#">View all<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right ms-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-</svg></a>
-				    </div><!--//app-card-footer-->
-				</div><!--//app-card-->
-				
-				
-				<div class="app-card app-card-notification shadow-sm mb-4">
-				    <div class="app-card-header px-4 py-3">
-				        <div class="row g-3 align-items-center">
-					        <div class="col-12 col-lg-auto text-center text-lg-start">						        
-				                <img class="profile-image" src="assets/images/profiles/profile-3.png" alt="">
-					        </div><!--//col-->
-					        <div class="col-12 col-lg-auto text-center text-lg-start">
-						        <div class="notification-type mb-2"><span class="badge bg-success">News</span></div>
-						        <h4 class="notification-title mb-1">Notification Heading Lorem Ipsum</h4>
-						        
-						        <ul class="notification-meta list-inline mb-0">
-							        <li class="list-inline-item">7 days ago</li>
-							        <li class="list-inline-item">|</li>
-							        <li class="list-inline-item">Kate Sanders</li>
-						        </ul>
-						   
-					        </div><!--//col-->
-				        </div><!--//row-->
-				    </div><!--//app-card-header-->
-				    <div class="app-card-body p-4">
-					    <div class="notification-content">Sed tempor faucibus arcu, nec tristique erat congue sed. Pellentesque auctor ut elit vel feugiat. Sed a mauris tempor, tempor lacus vel, tristique metus. Nulla interdum felis id metus fermentum laoreet.</div>
-				    </div><!--//app-card-body-->
-				    <div class="app-card-footer px-4 py-3">
-					    <a class="action-link" href="#">Read more<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right ms-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-</svg></a>
-				    </div><!--//app-card-footer-->
-				</div><!--//app-card-->
-				
-				
-				
-				
-				
-				<div class="text-center mt-4"><a class="btn app-btn-secondary" href="#">Load more notifications</a></div>
-			    
-		    </div><!--//container-fluid-->
-	    </div><!--//app-content-->
+                    <div class="app-card-header px-4 py-3">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-12 col-lg-auto text-center text-lg-start">
+                                <div class="app-icon-holder">
+                                    <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-bell" fill="currentColor">
+                                        <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2z"/>
+                                        <path fill-rule="evenodd" d="M8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-auto text-center text-lg-start">
+                                <div class="notification-type mb-2">
+                                    <span class="badge <?php echo $badge_class; ?>">Notification</span>
+                                </div>
+                                <h4 class="notification-title mb-1"><?php echo htmlspecialchars($notif['title']); ?></h4>
+                                <ul class="notification-meta list-inline mb-0">
+                                    <li class="list-inline-item"><?php echo htmlspecialchars($notif['notif_time']); ?></li>
+                                    <li class="list-inline-item">|</li>
+                                    <li class="list-inline-item"><?php echo htmlspecialchars($notif['username']); ?></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-card-body p-4">
+                        <div class="notification-content"><?php echo htmlspecialchars($notif['notif_msg']); ?></div>
+                    </div>
+                    <div class="app-card-footer px-4 py-3">
+                        <a class="action-link text-danger" href="notifications.php?delete=<?php echo (int)$notif['id']; ?>&page=<?php echo $page; ?>">Delete</a>
+                    </div>
+                </div>
+                
+                <?php
+                    }
+                } else {
+                    echo '<div class="alert alert-info">No notifications found.</div>';
+                }
+                ?>
+                
+                <!-- Pagination -->
+                <?php
+                $countQuery = mysqli_query($connection, "SELECT COUNT(*) AS total FROM announcements");
+                $countRow = mysqli_fetch_assoc($countQuery);
+                $total_page = (int) ceil($countRow['total'] / $per_page);
+                ?>
+                <nav class="app-pagination">
+                    <ul class="pagination justify-content-center">
+                        <?php for ($i = 1; $i <= $total_page; $i++): ?>
+                            <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                <a class="page-link" href="notifications.php?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                            </li>
+                        <?php endfor; ?>
+                    </ul>
+                </nav>
+		    </div>
+	    </div>
 	    
 <?php
-	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+    include_once("../includes/footer.php");
+} else {
+    header("Location: login.php");
+    exit;
 }
 ?>
