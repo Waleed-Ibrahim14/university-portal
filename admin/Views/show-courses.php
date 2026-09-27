@@ -124,8 +124,9 @@ if ($current_role !== 'admin') {
                     <td class="cell">'.$course['updated_at'].'</td>';
 
                 echo '<td class="cell">'
-                    . '<a href="show-courses.php?delete='.(int)$course['id'].'&page='.$page.'" class="btn btn-danger btn-sm">delete</a>'
-                    . '</td>';
+				    . '<a href="update-course.php?courseId='.(int)$course['id'].'" class="btn btn-warning btn-sm">edit</a> '
+				    . '<a href="show-courses.php?delete='.(int)$course['id'].'&page='.$page.'" class="btn btn-danger btn-sm">delete</a>'
+				    . '</td>';
 
                 echo '</tr>';
             }
