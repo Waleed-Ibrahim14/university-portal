@@ -1,7 +1,17 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-	include_once("../includes/header.php");
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    /*--------------------------------------------------------------------------
+    | Include DB connection BEFORE the form (in case the process file needs it).
+    |--------------------------------------------------------------------------*/
+    include_once(__DIR__ . "/../Models/DataBaseConnection.php");
+    include_once("../includes/header.php");
 ?>
 <body class="app"> 
 	<?php include_once("../includes/sidepanel.php"); ?>  	
@@ -19,22 +29,31 @@ if ($_SESSION['role']  !== 'admin') {
 <div class="app-auth-body mx-auto col-10 col-md-10 col-lg-10">	
 <div class="auth-form-container text-start ">
     
-	<?php include_once("../includes/create-group-prosses.php");?>
-	<form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" class="auth-form login-form">         
+	<?php 
+    /*--------------------------------------------------------------------------
+    | Include process file (handles POST validation + INSERT).
+    |--------------------------------------------------------------------------*/
+    include_once("../includes/create-group-prosses.php");
+    ?>
+
+	<?php if (!empty($message)) echo $message; ?>
+
+	<form action="" method="post" class="auth-form login-form">         
         <div class="row">
 		<div class="mb-3 col-5 col-md-5 col-lg-5">
-			<input name="group_name" type="text" class="form-control" placeholder="Enter group Name" >
-            </tr></div>
+			<input name="group_name" type="text" class="form-control" placeholder="Enter group Name" required>
+            </div>
         </div>
         <div class="text-center col-3">
-			<button type="submit" name="submit" class="btn app-btn-primary w-100 theme-btn mx-auto">Create Group</button>
+			<button type="submit" name="create_group" class="btn app-btn-primary w-100 theme-btn mx-auto">Create Group</button>
 		</div>
 	</form>
 	</div>
 </div>
 <?php
 	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+} else {
+    header("Location: login.php");
+    exit;
 }
 ?>
