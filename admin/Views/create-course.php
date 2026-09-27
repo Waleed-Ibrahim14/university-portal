@@ -1,7 +1,18 @@
 <?php
 session_start();
-if ($_SESSION['role']  !== 'admin') { 
-	include_once("../includes/header.php");
+
+/*--------------------------------------------------------------------------
+| Backward-compatible role check.
+|--------------------------------------------------------------------------*/
+$current_role = $_SESSION['role_name'] ?? $_SESSION['role'] ?? '';
+
+if ($current_role !== 'admin') {
+    /*--------------------------------------------------------------------------
+    | Include DB connection BEFORE the form, so $connection is available below.
+    | Also include the process file (handles POST submission).
+    |--------------------------------------------------------------------------*/
+    include_once(__DIR__ . "/../Models/DataBaseConnection.php");
+    include_once("../includes/header.php");
 ?>
 <body class="app"> 
 	<?php include_once("../includes/sidepanel.php"); ?>  	
@@ -19,33 +30,53 @@ if ($_SESSION['role']  !== 'admin') {
 <div class="app-auth-body mx-auto col-10 col-md-10 col-lg-10">	
 <div class="auth-form-container text-start ">
     
-	<?php include_once("../includes/create-Course-prosses.php");?>
-	<form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" class="auth-form login-form">         
+	<?php 
+    /*--------------------------------------------------------------------------
+    | Include process file (handles validation + INSERT)
+    | NOTE: fixed filename capitalization (was create-Course-prosses.php)
+    |--------------------------------------------------------------------------*/
+    include_once("../includes/create-course-prosses.php");
+    ?>
+
+	<form action="" method="post" class="auth-form login-form">         
         <div class="row">
 		<div class="mb-3 col-5 col-md-5 col-lg-5">
-			<input name="course_name" type="text" class="form-control" placeholder="Enter Course Name" >
-            </tr></div>
+			<input name="course_name" type="text" class="form-control" placeholder="Enter Course Name" required>
+            </div>
             <div class="mb-3 col-5 col-md-5 col-lg-5">
-            <select name="teacher_id"  class="form-control">
-                <option value="">select teacher</option>
+            <select name="teacher_id" class="form-control" required>
+                <option value="">-- Select Teacher --</option>
                 <?php 
-                    $stmt = mysqli_query($connection, "SELECT * FROM `users` WHERE `role` = 'teacher'");
-                        while($teacherId = mysqli_fetch_assoc($stmt)){
-                        echo '<option value="'.$teacherId['id'].'">'.$teacherId['username'].'</option>';
+                    /*--------------------------------------------------------------------------
+                    | FIXED: replace `WHERE role = 'teacher'` (removed column) with JOIN
+                    |--------------------------------------------------------------------------*/
+                    $teachers = mysqli_query(
+                        $connection,
+                        "SELECT u.id, u.username
+                         FROM users u
+                         LEFT JOIN roles r ON u.role_id = r.id
+                         WHERE r.role_name = 'teacher'
+                         ORDER BY u.username ASC"
+                    );
+                    while ($teacher = mysqli_fetch_assoc($teachers)) {
+                        echo '<option value="'.(int)$teacher['id'].'">'
+                           . htmlspecialchars($teacher['username'])
+                           . '</option>';
                     }
                 ?>
             </select>
             </div>
         </div>
         <div class="text-center col-5 col-md-5 col-lg-5">
-			<button type="submit" name="submit" class="btn app-btn-primary w-100 theme-btn mx-auto">Create Notification</button>
+			<button type="submit" name="create_course" class="btn app-btn-primary w-100 theme-btn mx-auto">Create Course</button>
 		</div>
 	</form>
 	</div>
 </div>
 <?php
 	include_once("../includes/footer.php");	
-}else{
-	header("Location:login.php");
+} else {
+    header("Location: login.php");
+    exit;
 }
 ?>
