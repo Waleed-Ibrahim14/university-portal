@@ -37,7 +37,7 @@ if ($current_role !== 'admin') {
     |--------------------------------------------------------------------------*/
     include_once("../includes/create-course-prosses.php");
     ?>
-
+<?php if (!empty($message)) echo $message; ?>
 	<form action="" method="post" class="auth-form login-form">         
         <div class="row">
 		<div class="mb-3 col-5 col-md-5 col-lg-5">
