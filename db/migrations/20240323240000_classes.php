@@ -6,11 +6,13 @@ final class Classes extends AbstractMigration{
 /*--------------------------------------------------------------------------
 | Create classes Table ::
 |
-| CHANGES:
-|   - Added `teacher_id INT FK → users.id` (a class is taught by a teacher)
-|   - FK uses ON DELETE SET NULL to preserve class records if teacher is removed
-|   - Note: students are NOT linked here directly; the many-to-many relation
-|     is handled via `student_courses`
+| CHANGES (already applied):
+|   - Added `teacher_id INT FK → users.id`
+|   - FK uses ON DELETE SET NULL to preserve the class record if the
+|     teacher is removed (a class is a standalone entity with its own
+|     identity, independent of which teacher is currently assigned).
+|   - Students are NOT linked here directly; the many-to-many relation
+|     is handled via `student_courses`.
 |--------------------------------------------------------------------------*/
     public function up(){
         $this->execute("CREATE TABLE classes (
