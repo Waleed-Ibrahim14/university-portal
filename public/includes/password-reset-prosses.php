@@ -1,48 +1,78 @@
 <?php 
 /*--------------------------------------------------------------------------
-| Password Reset Prosses::
+| Password Reset Process (Public) ::
 |--------------------------------------------------------------------------*/
-include_once("../admin/Models/DataBaseConnection.php");
-$msg = ""; // Initialize the message variable
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+include_once(__DIR__ . "/../../admin/Models/DataBaseConnection.php");
+
+$msg = '';
 
 if (isset($_POST['reset-password'])) {
-    $email = trim($_POST['email']);
-    $oldPassword = $_POST['oldPassword'];
-    $newPassword = $_POST['password'];
 
-    // Validate input data
+    $email       = trim($_POST['email'] ?? '');
+    $oldPassword = $_POST['oldPassword'] ?? '';
+    $newPassword = $_POST['password'] ?? '';
+
+    /*--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------*/
     if (empty($email)) {
         $msg = '<div class="alert alert-danger" role="alert">Please enter your email</div>';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $msg = '<div class="alert alert-danger" role="alert">Please enter a valid email</div>';
     } elseif (empty($oldPassword)) {
         $msg = '<div class="alert alert-danger" role="alert">Please enter your old password</div>';
     } elseif (empty($newPassword)) {
         $msg = '<div class="alert alert-danger" role="alert">Please enter your new password</div>';
+    } elseif (strlen($newPassword) < 8) {
+        $msg = '<div class="alert alert-danger" role="alert">New password must be at least 8 characters</div>';
+    } elseif ($newPassword === $oldPassword) {
+        $msg = '<div class="alert alert-danger" role="alert">New password must be different from the old one</div>';
     } else {
-        // Check if the email exists in the database
-        $stmt = mysqli_prepare($connection, "SELECT `email`, `password` FROM `users` WHERE `email` = ?");
-        mysqli_stmt_bind_param($stmt, "s", $email);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        $user = mysqli_fetch_assoc($result);
 
-        if (!$user) {
-            $msg = '<div class="alert alert-danger" role="alert">Email not found</div>';
-        } elseif (!password_verify($oldPassword, $user['password'])) {
-            $msg = '<div class="alert alert-danger" role="alert">Your old password is incorrect</div>';
+        /*--------------------------------------------------------------------------
+        | Fetch user (prepared statement — matches project OOP style)
+        |--------------------------------------------------------------------------*/
+        $stmt = $connection->prepare(
+            "SELECT id, email, password FROM users WHERE email = ? LIMIT 1"
+        );
+
+        if ($stmt === false) {
+            $msg = '<div class="alert alert-danger" role="alert">Database error</div>';
         } else {
-            // Update the password
-            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-            $updateStmt = mysqli_prepare($connection, "UPDATE `users` SET `password` = ?, `updated_at` = NOW() WHERE `email` = ?");
-            mysqli_stmt_bind_param($updateStmt, "ss", $hashedPassword, $email);
-            mysqli_stmt_execute($updateStmt);
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $user = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
 
-            if (mysqli_affected_rows($connection) > 0) {
-                $msg = '<div class="alert alert-success" role="alert">Password changed successfully</div><meta http-equiv="refresh"content="3; \'index.php\' "/>';
+            if (!$user) {
+                $msg = '<div class="alert alert-danger" role="alert">Email not found</div>';
+            } elseif (!password_verify($oldPassword, $user['password'])) {
+                $msg = '<div class="alert alert-danger" role="alert">Your old password is incorrect</div>';
             } else {
-                $msg = '<div class="alert alert-danger" role="alert">Error updating password</div>';
+                /*--------------------------------------------------------------------------
+                | Update password
+                |--------------------------------------------------------------------------*/
+                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+
+                $upd = $connection->prepare(
+                    "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ? LIMIT 1"
+                );
+                $upd->bind_param("si", $hashedPassword, $user['id']);
+
+                if ($upd->execute() && $upd->affected_rows > 0) {
+                    // FIXED meta refresh syntax
+                    $msg = '<div class="alert alert-success" role="alert">Password changed successfully</div>'
+                         . '<meta http-equiv="refresh" content="3; url=index.php" />';
+                } else {
+                    $msg = '<div class="alert alert-danger" role="alert">Error updating password</div>';
+                }
+                $upd->close();
             }
         }
     }
 }
-        
 ?>
